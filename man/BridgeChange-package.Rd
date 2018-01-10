@@ -6,11 +6,12 @@
 \alias{BridgeChange-package}
 \title{Fit Bayesian Bridge model with Change-points.}
 \description{
-This package implements gibbs updates for Bayesian sparse linear mixed effect model 
- for panel data with change-ponts.
+This package provides Bayesian implementation of Bridge regression with possible change-points.
+The package supports univariate time-series data as well as panel data with linear and non-linear link functions.
+In addition to Gaussian linear models, count and binary outcomes are supported.
 }
 \details{
-This package offers the following functions:
+Specifically, this package offers the following functions:
 \itemize{
   \item \code{\link{BridgeChangeReg}} Univariate Regression with Change point.
 }

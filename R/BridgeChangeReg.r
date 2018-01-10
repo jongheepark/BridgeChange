@@ -80,6 +80,9 @@
 #'  The object contains an attribute \code{"intercept"} that stores mcmc samples for intercept and an attribute state storage matrix that contains posterior samples of hidden states.
 #' @example examples/reg_eg.R
 #'
+#' @importFrom mvtnorm rmvnorm
+#' @importFrom copula retstable
+#' @importFrom coda as.mcmc
 #' @export
 BridgeChangeReg <- function(
     y, X,                                             # inputs
@@ -410,22 +413,24 @@ BridgeChangeReg <- function(
         ## report
         ## ---------------------------------------------------- ##
        if (verbose!= 0 &iter %% verbose == 0){
-            cat("\n----------------------------------------------",'\n')
-            cat("## iteration = ", iter, '\n')
-            cat("----------------------------------------------",'\n')
-            if (n.break > 0) {
-                cat("sampled states: ", table(state), '\n')
-                ## cat("Transition matrix: ", format(t(P), digits=2) , '\n')
-                for(j in 1:ns){
-                    cat("alpha at state ", j, ": ", alpha[j], '\n')
-                    cat("beta at state ", j, ": ", format(beta[j, ], digits=2), '\n')
-                    cat("sigma^2 at state ", j, ": ", sig2[j] , '\n')
-                }
-
-            }else{
-                cat("alpha: ", alpha, '\n')
-                cat("beta: ", format(t(beta), digits=2), '\n')
-            }
+            cat(sprintf("\r Estimating parameters. Now at %i of %i", iter, totiter))
+            flush.console()
+            # cat("\n----------------------------------------------",'\n')
+            # cat("## iteration = ", iter, '\n')
+            # cat("----------------------------------------------",'\n')
+            # if (n.break > 0) {
+            #     cat("sampled states: ", table(state), '\n')
+            #     ## cat("Transition matrix: ", format(t(P), digits=2) , '\n')
+            #     for(j in 1:ns){
+            #         cat("alpha at state ", j, ": ", alpha[j], '\n')
+            #         cat("beta at state ", j, ": ", format(beta[j, ], digits=2), '\n')
+            #         cat("sigma^2 at state ", j, ": ", sig2[j] , '\n')
+            #     }
+            #
+            # }else{
+            #     cat("alpha: ", alpha, '\n')
+            #     cat("beta: ", format(t(beta), digits=2), '\n')
+            # }
 
         }
         if (iter > burn && (iter %% thin == 0)) {
@@ -899,5 +904,8 @@ BridgeChangeReg <- function(
         attr(output, "loglike") <- loglike
         attr(output, "logmarglike") <- logmarglike
     }
+
+    class(output) <- c("mcmc", "BridgeChange")
+
     return(output)
 }
