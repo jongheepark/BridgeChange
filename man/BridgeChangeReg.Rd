@@ -156,7 +156,8 @@ out1 <- BridgeChangeReg(
     y = out$y.c, X = out$x.c, n.break = 1,
     scale.data = TRUE, intercept = TRUE,
     mcmc = mcmc, burn = burn, thin=thin, verbose = verbose,
-    alpha.MH = TRUE, Waic=TRUE, marginal = FALSE)
+    alpha.MH = TRUE, Waic=TRUE, marginal = FALSE
+)
 
 
 set.seed(11173);
@@ -164,7 +165,8 @@ out2 <- BridgeChangeReg(
     y=out$y.c, X=out$x.c, n.break = 2,
     scale.data = TRUE, intercept = TRUE,
     mcmc = mcmc, burn = burn, thin=thin, verbose=verbose,
-    alpha.MH = TRUE, Waic = TRUE, marginal = FALSE)
+    alpha.MH = TRUE, Waic = TRUE, marginal = FALSE
+)
 
 WaicCompare(list(out0, out1, out2))
 # MarginalCompare(list(out0, out1))
