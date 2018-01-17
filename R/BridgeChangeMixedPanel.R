@@ -52,7 +52,7 @@
 #' @importFrom mvtnorm rmvnorm
 #' @importFrom copula retstable
 #' @importFrom coda as.mcmc mcmc
-#' @useDynLib SparseChange
+#' @useDynLib BridgeChange
 #' @export
 BridgeMixedPanel <- function(
     y, X, W,
