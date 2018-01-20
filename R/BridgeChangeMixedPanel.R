@@ -34,8 +34,7 @@
 #' @param nu.rate =2.0
 #' @param alpha = 1
 #' @param alpha.MH If \code{TRUE}, alpha is updated by MH algorithm. By default, it is updated by griddy gibbs.
-#' @param inter Default is \code{FALSE}. If \code{TRUE}, all interaction terms are considered.
-#' @param scale.data Default is \code{TRUE}.
+#' @param standardize Default is \code{TRUE}.
 #'  If \code{TRUE}, Y will be demeaned, and X and W will be scaled to be mean zero and variance one.
 #'  Estimated parameters are always in the transformed scale.
 #' @param beta.start \code{= NA}
@@ -58,12 +57,11 @@ BridgeMixedPanel <- function(
     y, X, W,
     subject.id,
     time.id,
-
+    standardize = TRUE,
     n.break = 1,
     mcmc=100, burn=100, verbose=100, thin = 1,
     b0, B0, c0 = 0.1, d0 = 0.1, r0, R0, a = NULL, b = NULL,
     nu.shape=2.0, nu.rate=2.0, alpha = 1, alpha.MH = FALSE,
-    inter = FALSE, scale.data = TRUE,
     beta.start = NULL, sigma2.start = NA, D.start= NA, P.start = NA,
     Waic = FALSE, marginal = FALSE,
     fixed = TRUE
@@ -83,13 +81,15 @@ BridgeMixedPanel <- function(
     ## ---------------------------------------------------- ##
     # data transformation
     ## ---------------------------------------------------- ##
-    if (scale.data) {
+    if (standardize) {
+        ## save original information 
+        ysd <- sd(y)
+        Xsd <- apply(X, 2, sd)
+        
         # demeaning Y
-        Y <- as.matrix(y - mean(y, na.rm = TRUE))
-        # Y <- as.matrix(y )
-        # scale X and W such that col-wise mean zero and sd = 1
+        Y <- scale(y) #as.matrix(y - mean(y, na.rm = TRUE))
         X <- as.matrix(scale(X))
-        W <- as.matrix(scale(W))
+        if (!fixed) W <- as.matrix(scale(W))
     } else {
         Y <- as.matrix(y)
         X <- as.matrix(X)
@@ -99,21 +99,21 @@ BridgeMixedPanel <- function(
     ## ---------------------------------------------------- ##
     # take all pair-wise interactions
     ## ---------------------------------------------------- ##
-    if(inter){
-        if(length(which(apply(X, 2, sd)==0)) > 0){
-            X0 <- X[, -which(apply(X, 2, sd)==0)]
-        }else{
-            X0 <- X
-        }
-        x1.1 <- data.frame(X0)
-        var.names <- colnames(X0)
-        x1.2 <- t(apply(x1.1, 1, combn, 2, prod))
-        newX <- as.matrix(cbind(x1.1, x1.2))
-        colnames(newX) <- c(var.names, combn(var.names, 2, paste, collapse="-"))
-        X <- cbind(X[, which(apply(X, 2, sd)==0)], newX)
-        K  <-  ncol(X)
-
-    }
+    # if(inter){
+    #     if(length(which(apply(X, 2, sd)==0)) > 0){
+    #         X0 <- X[, -which(apply(X, 2, sd)==0)]
+    #     }else{
+    #         X0 <- X
+    #     }
+    #     x1.1 <- data.frame(X0)
+    #     var.names <- colnames(X0)
+    #     x1.2 <- t(apply(x1.1, 1, combn, 2, prod))
+    #     newX <- as.matrix(cbind(x1.1, x1.2))
+    #     colnames(newX) <- c(var.names, combn(var.names, 2, paste, collapse="-"))
+    #     X <- cbind(X[, which(apply(X, 2, sd)==0)], newX)
+    #     K  <-  ncol(X)
+    # 
+    # }
 
 
     ## ---------------------------------------------------- ##
@@ -1136,6 +1136,8 @@ BridgeMixedPanel <- function(
     Dnames <-  sapply(c(1:(Q*Q)), function(i){paste("D", i, sep = "")})
     output <- NA
     if (m == 0){
+        if (standardize) betadraws <- betadraws * ysd / Xsd
+
         if(fixed){
             output <- as.mcmc(cbind(betadraws, sigmadraws))
             colnames(output) <- c(xnames, "sigma2")
@@ -1144,6 +1146,16 @@ BridgeMixedPanel <- function(
             colnames(output) <- c(xnames, "sigma2", Dnames)
         }
     }else{
+        if (standardize) {
+            sidx <- rep(1:ns, each = ncol(X))
+            xidx <- 1:ncol(betadraws)
+            idx  <- split(xidx, sidx)
+            C1   <- ysd / Xsd #sd(y) / apply(X, 2, sd)
+            for (s in 1:ns) {
+                betadraws[,idx[[s]]] <- t(apply(betadraws[,idx[[s]]], 1, function(x) x * C1))
+            }
+        }
+        
         output1 <- coda::mcmc(data=betadraws, start=burn+1, end=burn + mcmc, thin=thin)
         output2 <- coda::mcmc(data=sigmadraws, start=burn+1, end=burn + mcmc, thin=thin)
         if(!fixed){

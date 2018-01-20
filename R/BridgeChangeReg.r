@@ -839,20 +839,10 @@ BridgeChangeReg <- function(
     output <- NA
 
     if (m == 0){
-        # if(intercept){
-        #     ## Drop intercept estimates
-        #     betadraws   <- betadraws[,-1]
-        #     lambdadraws <- lambdadraws[,-1]
-        # }
         if (scale.data) betadraws <- betadraws * sd(y) / apply(X, 2, sd)
         output <- as.mcmc(cbind(betadraws, sigmadraws))
         colnames(output) <- c(xnames, "sigma2")
     }else{
-        # if(intercept){
-        #     ## Drop intercept estimates
-        #     betadraws   <- betadraws[,-c(1+(0:(ns-1)*(K-1)))]
-        #     lambdadraws <- lambdadraws[,-c(1+(0:(ns-1)*(K-1)))]
-        # }
         sidx <- rep(1:ns, each = ncol(X))
         xidx <- 1:ncol(betadraws)
         idx  <- split(xidx, sidx)
@@ -882,6 +872,7 @@ BridgeChangeReg <- function(
         ps.holder <- matrix(ps.store, ntime, ns)
         s.holder  <- matrix(sdraws, nstore, ntime)
     }
+    
     ## attr(output, "X") <- X
     attr(output, "title") <- "BridgeChangeReg Posterior Sample"
     attr(output, "intercept") <- coda::mcmc(beta0draws,start=burn+1, end=burn + mcmc, thin=thin)
