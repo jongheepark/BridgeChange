@@ -101,6 +101,7 @@ BridgeChangeReg <- function(
     ## require("copula"); ## No longer required.  Adapted implementation to BayesBridge.
     ## Set up.
     X <- Xorig  <- as.matrix(X);
+    resid = NULL
 
     y.sd = sd(y)
     X.sd = apply(X, 2, sd)
@@ -161,7 +162,14 @@ BridgeChangeReg <- function(
 
     if(is.null(beta.start) & K < ntime){
         ols    <-  lm(ydm ~ X-1)
-        beta   <-  rmvnorm(ns, coef(ols), vcov(ols))
+        ols.coef <- coef(ols);
+        ols.vcov <- vcov(ols)
+        if(sum(is.na(ols.coef)) > 0){
+            cat("OLS regression of y on X generates NA's in coefficients! Random numbers are imputed for those NA's.")
+            ols.coef[which(is.na(ols.coef))] <- rnorm(sum(is.na(ols.coef)))
+            ols.vcov <- ifelse(is.na(ols.vcov), runif(1), ols.vcov)
+        }
+        beta   <-  rmvnorm(ns, ols.coef, ols.vcov)
         sig2   <-  rep(summary(ols)$sigma, ns)^2
     }else if(is.null(beta.start) & K >= ntime){
         beta <- matrix(rnorm(K * ns), nrow = ns, ncol = K)
@@ -463,12 +471,17 @@ BridgeChangeReg <- function(
     ## ---------------------------------------------------- ##
     ## Marginal Likelihood Estimation starts here!
     ## ---------------------------------------------------- ##
+
+    ## compute residual
+    beta.st   <- matrix(apply(betadraws, 2, mean), ns, K, byrow=TRUE)
+    mu.st.state <- X %*% t(beta.st)
+    resid <- sapply(1:ntime, function(t){ydm[t] - c(mu.st.state[t, state[t]])})
+    
     if(marginal){
 
         ## ---------------------------------------------------- ##
         ## prepare
         ## ---------------------------------------------------- ##
-        beta.st   <- matrix(apply(betadraws, 2, mean), ns, K, byrow=TRUE)
         lambda.st <- matrix(apply(lambdadraws, 2, mean), ns, K, byrow=TRUE)
         sig2.st   <- apply(sigmadraws, 2, mean)
         alpha.st  <- apply(alphadraws, 2, mean)
@@ -478,7 +491,6 @@ BridgeChangeReg <- function(
         if(n.break > 0){
             P.st <- apply(Pmat, 2, mean)
         }
-        mu.st.state <- X %*% t(beta.st)
 
         ## ---------------------------------------------------- ##
         ## Likelihood computation
@@ -878,6 +890,7 @@ BridgeChangeReg <- function(
     attr(output, "intercept") <- coda::mcmc(beta0draws,start=burn+1, end=burn + mcmc, thin=thin)
     attr(output, "y")       <- y
     attr(output, "X")       <- X
+    attr(output, "resid")   <- resid
     attr(output, "y.sd")    <- y.sd
     attr(output, "X.sd")    <- X.sd
     attr(output, "m")       <- m
