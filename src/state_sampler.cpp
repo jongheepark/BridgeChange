@@ -143,7 +143,7 @@ Rcpp::List sparse_fixed_state_sampler_cpp(
     // define useful quantity
     const int n_regime = m + 1; // number of _regime_: n_break +  1
     const int max_state = m;    // index should starts from one!
-    arma::mat diagN(N, N, arma::fill::eye);
+    // arma::mat diagN(N, N, arma::fill::eye);
 
     // storage
     arma::mat F(T, n_regime);   // storage for the Filtered probabilities
@@ -152,7 +152,9 @@ Rcpp::List sparse_fixed_state_sampler_cpp(
     
     for (int tt = 0; tt < T; tt++) {
         for (int j = 0; j < n_regime; j++) {
-            arma::vec Mu    = Xt_arr[tt] * beta.row(j).t();
+            arma::vec Mu = Xt_arr[tt] * beta.row(j).t();
+	    int Nt = Mu.n_rows; // for unbalanced panel
+	    arma::mat diagN(Nt, Nt, arma::fill::eye);
             arma::mat Sigma = sig2(j) * diagN;
             py(j) = dmvnrm_arma(Yt_arr[tt], Mu, Sigma);
         }

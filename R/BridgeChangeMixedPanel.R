@@ -63,8 +63,8 @@ BridgeMixedPanel <- function(
     b0, B0, c0 = 0.1, d0 = 0.1, r0, R0, a = NULL, b = NULL,
     nu.shape=2.0, nu.rate=2.0, alpha = 1, alpha.MH = FALSE,
     beta.start = NULL, sigma2.start = NA, D.start= NA, P.start = NA,
-    Waic = FALSE, marginal = FALSE,
-    fixed = TRUE
+    Waic = FALSE, marginal = FALSE, fixed = TRUE,
+    unscaled.Y = unscaled.Y, unscaled.X = unscaled.X
 ) {
     ## ---------------------------------------------------- ##
     # Data
@@ -86,7 +86,7 @@ BridgeMixedPanel <- function(
         ysd <- sd(y)
         Xsd <- apply(X, 2, sd)
         
-        # demeaning Y
+        ## demeaning Y
         Y <- scale(y) #as.matrix(y - mean(y, na.rm = TRUE))
         X <- as.matrix(scale(X))
         if (!fixed) W <- as.matrix(scale(W))
@@ -493,19 +493,23 @@ BridgeMixedPanel <- function(
                     for (j in 1:ns){
                         ej <- as.numeric(is.element(time.id, which(state == j)) & subject.id==i)
                         nj <- sum(ej)
-                        yj  <-  matrix(y[ej==1], nj, 1)
-                        Xj  <-  matrix(X[ej==1,], nj, K)
-
-                        if(fixed){
-                            mu.state  <-  Xj%*%beta[j,]
-                        } else{
-                            Wj  <-  matrix(W[ej==1,], nj, Q)
-                            mu.state  <-  Xj%*%beta[j,] + Wj%*%bi[[j]]
+                        if(nj > 0){
+                            yj  <-  matrix(y[ej==1], nj, 1)
+                            Xj  <-  matrix(X[ej==1,], nj, K)
+                            
+                            if(fixed){
+                                mu.state  <-  Xj%*%beta[j,]
+                            } else{
+                                Wj  <-  matrix(W[ej==1,], nj, Q)
+                                mu.state  <-  Xj%*%beta[j,] + Wj%*%bi[[j]]
+                            }
+                            ## cat("marker:(marker+nj-1) is ", marker:(marker+nj-1), "\n")
+                            ## cat("dnorm is ", dnorm(yj, mean = mu.state, sd=sqrt(sig2[j]), log=TRUE), "\n")
+                            Z.loglike.array[(iter-burn)/thin, marker:(marker+nj-1)] <-
+                                dnorm(yj, mean = mu.state, sd=sqrt(sig2[j]), log=TRUE)
+                            
+                            ## log(dnorm(yi, Mu, sqrt(sig2)))
                         }
-                        Z.loglike.array[(iter-burn)/thin, marker:(marker+nj-1)] <-
-                            dnorm(yj, mean = mu.state, sd=sqrt(sig2[j]), log=TRUE)
-
-                        ## log(dnorm(yi, Mu, sqrt(sig2)))
                         marker   <-  marker + nj
                         ## c(mu.state[t, state[t]])
                     }
@@ -518,41 +522,44 @@ BridgeMixedPanel <- function(
     ## ---------------------------------------------------- ##
     ## Marginal Likelihood Estimation starts here!
     ## ---------------------------------------------------- ##
-    if(marginal){
-        ## ---------------------------------------------------- ##
-        ## prepare
-        ## ---------------------------------------------------- ##
-        beta.st <- matrix(apply(betadraws, 2, mean), ns, K, byrow=TRUE)
-        lambda.st <- matrix(apply(lambdadraws, 2, mean), ns, K, byrow=TRUE)
-        sig2.st <- apply(sigmadraws, 2, mean)
-        if(!fixed){
-            D.st <- Dinv.st <- D
-            D.st.raw <- apply(Ddraws, 2, mean)
-            for(j in 1:ns){
-                D.st[[j]] <- matrix(D.st.raw[(j-1)*Q*Q + 1:(Q*Q)], Q, Q)
-                Dinv.st[[j]] <- chol2inv(chol(D.st[[j]]))
-            }
+    ## ---------------------------------------------------- ##
+    ## prepare
+    ## ---------------------------------------------------- ##
+    beta.st <- matrix(apply(betadraws, 2, mean), ns, K, byrow=TRUE)
+    lambda.st <- matrix(apply(lambdadraws, 2, mean), ns, K, byrow=TRUE)
+    sig2.st <- apply(sigmadraws, 2, mean)
+    if(!fixed){
+        D.st <- Dinv.st <- D
+        D.st.raw <- apply(Ddraws, 2, mean)
+        for(j in 1:ns){
+            D.st[[j]] <- matrix(D.st.raw[(j-1)*Q*Q + 1:(Q*Q)], Q, Q)
+            Dinv.st[[j]] <- chol2inv(chol(D.st[[j]]))
         }
-
-        alpha.st <- apply(alphadraws, 2, mean)
-        tau.st <- apply(taudraws, 2, mean)
-        if(n.break > 0){
-            P.st <- apply(Pmat, 2, mean)
-        }
-        ## ---------------------------------------------------- ##
-        ## Likelihood computation
-        ## ---------------------------------------------------- ##
-        marker <- 1
-        loglike.t <- rep(NA, NT)
-        bi.st <- bi
-        for (i in 1:N){
-            for (j in 1:ns){
-                ej <- as.numeric(is.element(time.id, which(state == j)) & subject.id==i)
-                nj <- sum(ej)
+    }
+    
+    alpha.st <- apply(alphadraws, 2, mean)
+    tau.st <- apply(taudraws, 2, mean)
+    if(n.break > 0){
+        P.st <- apply(Pmat, 2, mean)
+    }
+    ## ---------------------------------------------------- ##
+    ## Likelihood computation
+    ## ---------------------------------------------------- ##
+    marker <- 1
+    resid <- loglike.t <- rep(NA, NT)
+    bi.st <- bi
+    for (i in 1:N){
+        for (j in 1:ns){
+            ej <- as.numeric(is.element(time.id, which(state == j)) & subject.id==i)
+            nj <- sum(ej)
+            if(nj > 0){
                 yj  <-  matrix(y[ej==1], nj, 1)
                 Xj  <-  matrix(X[ej==1,], nj, K)
+                unscaled.yj  <-  matrix(unscaled.Y[ej==1], nj, 1)
+                unscaled.Xj  <-  matrix(unscaled.X[ej==1,], nj, K)
                 if(fixed){
                     mu.state.st  <-  Xj%*%beta.st[j,]
+                    mu.state.unscaled  <-  unscaled.Xj%*%beta.st[j,]
                 } else{
                     Wj  <-  matrix(W[ej==1,], nj, Q)
                     ehatj <- yj - Xj%*%beta.st[j,]
@@ -561,19 +568,23 @@ BridgeMixedPanel <- function(
                     Mu <- V%*%(t(Wj)%*%ehatj)/sig2[j]
                     bi.st[[j]]      <- drop(Mu + t(U) %*% rnorm(Q)) ## as.vector(rmvnorm(1, post.bi.mean, post.bi.var))
                     mu.state.st  <-  Xj%*%beta.st[j,] + Wj%*%bi.st[[j]]
+                    ## unscaled.W must be considered here....later...JHP
                 }
                 ## Likelihood computation
                 loglike.t[marker:(marker+nj-1)] <- dnorm(yj, mean = mu.state.st, sd=sqrt(sig2.st[j]), log=TRUE)
-                 marker   <-  marker + nj
+                resid[marker:(marker+nj-1)] <- yj - mu.state.st
             }
+            marker   <-  marker + nj
         }
-        loglike <- sum(loglike.t)
+    }
+    loglike <- sum(loglike.t)
 
-        cat("\n---------------------------------------------- \n ")
-        cat("Likelihood computation \n")
-        cat("    loglike: ", as.numeric(loglike), "\n")
-        cat("---------------------------------------------- \n ")
-
+    cat("\n---------------------------------------------- \n ")
+    cat("Likelihood computation \n")
+    cat("    loglike: ", as.numeric(loglike), "\n")
+    cat("---------------------------------------------- \n ")
+    
+    if(marginal){
         ## holders
         density.sig2.holder <- density.nu.holder <- density.D.holder <- matrix(NA, mcmc, ns)
 
@@ -1207,11 +1218,11 @@ BridgeMixedPanel <- function(
         attr(output, "lambda") <- output4
     }
     attr(output, "Waic.out") <- Waic.out
+    attr(output, "loglike") <- loglike
+    attr(output, "resid") <- resid
     if(marginal){
-        attr(output, "loglike") <- loglike
         attr(output, "logmarglike") <- logmarglike
     }
-
     class(output) <- c("mcmc", "BridgeChange")
     return(output)
 }

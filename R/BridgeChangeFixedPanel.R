@@ -63,12 +63,15 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
     ##
     m <- n.break
     # 
+    unscaled.Y <- y
+    unscaled.X <- X
+
     if (standardize) { 
         ysd <- sd(y)
         Xsd <- apply(X, 2, sd)
         dat.sd <- c(ysd, Xsd)
         X <- scale(X)
-        y <- scale(y)        
+        y <- scale(as.vector(y))        
     }
     
     
@@ -104,7 +107,8 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
                                n.break = n.break, b0=b0, B0=B0, c0=c0, d0=d0, r0=r0, R0=R0,
                                standardize = FALSE,
                                mcmc = mcmc, burn = burn, thin = thin, verbose=verbose, 
-                               nu.shape = 2.0, nu.rate = 2.0, alpha = 1, Waic = Waic, marginal = marginal, fixed = TRUE)
+                               nu.shape = 2.0, nu.rate = 2.0, alpha = 1, Waic = Waic, marginal = marginal, fixed = TRUE,
+                               unscaled.Y = unscaled.Y, unscaled.X = unscaled.X)
 
     attr(output, "title")  <- "SparseChangeFixedPanel Posterior Sample"
     attr(output, "m")      <- n.break
