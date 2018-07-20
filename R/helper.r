@@ -203,7 +203,7 @@ centerdata <- function(X, all=TRUE){
             ## if binary data should be untouched
             if(length(unique(X[,k])) == 2){
                 new.X[,k] <- X[,k]
-            }
+ㅇdr            }
         }
         new.X[,k] <- (X[,k] - col.mean[k]) ## /(col.sd[k])
     }

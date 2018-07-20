@@ -334,7 +334,7 @@ BridgeChangeReg <- function(
             if(alpha.limit){
                 for (j in 1:ns){
                     # alpha[j] <- draw.alpha2(alpha[j], beta[j,], tau[j])
-                    alpha[j] <- draw.alpha(alpha[j], beta[j,], tau[j], ub = 1.0)
+                    alpha[j] <- draw.alpha2(alpha[j], beta[j,], tau[j])
                 }
             }else{
                 ## if alpha is sampled from (0, 2]

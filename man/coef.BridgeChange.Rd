@@ -4,7 +4,7 @@
 \alias{coef.BridgeChange}
 \title{Obtain posterior mean of coefficients}
 \usage{
-coef.BridgeChange(out)
+\method{coef}{BridgeChange}(out)
 }
 \arguments{
 \item{out}{\code{BridgeChange} objects. Typically output from \code{BridgeChangeReg}.}

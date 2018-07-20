@@ -30,7 +30,7 @@
 #'
 #' @export
 BridgeFixedPanel <- function(formula, data, index, model, effect,
-                             standardize = TRUE,
+                             standardize = TRUE, inter = FALSE, 
                              n.break = 1, 
                              mcmc = 100, burn = 100, verbose = 100, thin = 1,
                              b0=0, B0=1, c0 = 0.1, d0 = 0.1, r0 =  1, R0 = 1,
@@ -62,7 +62,18 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
     ## centering X and Y?
     ##
     m <- n.break
-    # 
+    #     
+    
+    W <- matrix(0, length(y), 1)
+    
+    if(inter){
+        x1.1 <- data.frame(X)
+        var.names <- colnames(X)
+        x1.2 <- matrix(t(apply(x1.1, 1, combn, 2, prod)), nrow = nrow(X))
+        newX <- as.matrix(cbind(x1.1, x1.2))
+        colnames(newX) <- c(var.names, combn(var.names, 2, paste, collapse="-"))
+        X <- newX
+    }
     unscaled.Y <- y
     unscaled.X <- X
 
@@ -73,18 +84,7 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
         X <- scale(X)
         y <- scale(as.vector(y))        
     }
-    
-    
-    W <- matrix(0, length(y), 1)
-    
-    # if(inter){
-    #     x1.1 <- data.frame(X)
-    #     var.names <- colnames(X)
-    #     x1.2 <- matrix(t(apply(x1.1, 1, combn, 2, prod)), nrow = nrow(X))
-    #     newX <- as.matrix(cbind(x1.1, x1.2))
-    #     colnames(newX) <- c(var.names, combn(var.names, 2, paste, collapse="-"))
-    #     X <- newX
-    # }
+
     # data2 <- cbind(data[, index], y, X)
     # var.names <- colnames(data2)
     # colnames(data2) <- gsub("X", "", var.names)
