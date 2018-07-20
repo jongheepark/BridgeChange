@@ -57,7 +57,7 @@ findBreakPoint <- function (mcmcout, start = 1)
 #' Compute the Average Loss of Hidden State Changes from Expected Break Points
 #'
 #'
-#' @param ... MCMCpack output objects. These have to be of class
+#' @param ... MCMC output objects. These have to be of class
 #'   \code{mcmc} and have a \code{logmarglike} attribute. In what
 #'   follows, we let \code{M} denote the total number of models to be
 #'   compared.
@@ -102,8 +102,6 @@ findBreakPoint <- function (mcmcout, start = 1)
 #' sigma.var=var(y)
 #' mcmc = 1000
 #' ## models
-#' model0 <-  MCMCregressChange(formula, m=0, b0=b0, B0=B0, mcmc=mcmc, burnin=mcmc,
-#'            sigma.mu=sigma.mu, sigma.var=sigma.var, marginal.likelihood="Chib95")
 #' model1 <-  MCMCregressChange(formula, m=1, b0=b0, B0=B0, mcmc=mcmc, burnin=mcmc,
 #'           sigma.mu=sigma.mu, sigma.var=sigma.var, marginal.likelihood="Chib95")
 #' model2 <-  MCMCregressChange(formula, m=2, b0=b0, B0=B0, mcmc=mcmc, burnin=mcmc,
@@ -115,7 +113,7 @@ findBreakPoint <- function (mcmcout, start = 1)
 #' model5 <-  MCMCregressChange(formula, m=5, b0=b0, B0=B0, mcmc=mcmc, burnin=mcmc,
 #'            sigma.mu=sigma.mu, sigma.var=sigma.var, marginal.likelihood="Chib95")
 #'
-#' out <- BreakPointLoss(model0, model1, model2, model3, model4, model5, marginal=TRUE)
+#' out <- BreakPointLoss(model1, model2, model3, model4, model5, marginal=TRUE)
 #'
 #' print(out[["ave.loss"]])
 #' }
@@ -131,20 +129,16 @@ BreakPointLoss <- function(..., marginal=FALSE, display=TRUE){
     this.call.string <- this.call.string[[1]][length(this.call.string[[1]])]
     this.call.string <- strsplit(this.call.string, ",")
     
-    model.names <- NULL
+    break.number <- rep(NA, M)
     for (i in 1:M) {
-        model.names <- c(model.names, this.call.string[[1]][i])
-    }
-    model.names <- gsub(")", "", model.names)
-    model.names <- gsub(" ", "", model.names)
-    for (i in 1:M) {
-        if (!is.mcmc(model.list[[i]])) {
-            stop("argument not of class mcmc\n")
-        }
-        if(attr(model.list[[i]], "m") < 1){
+        break.number[i] <- attr(model.list[[i]], "m")
+        ## print(break.number[i])
+        if(break.number[i] < 1){
             stop("no break model must be dropped\n")
         }
     }
+
+    model.names <- paste0("break ", break.number)## c(model.names, this.call.string[[1]][i])
     ## If marginal, report marginal likelihood
     logmarglike <- NULL
     if(marginal){
@@ -167,8 +161,8 @@ BreakPointLoss <- function(..., marginal=FALSE, display=TRUE){
     if(display){
         plot(ave.loss, type="o", xlab="Model", ylab="Loss", main="Average Loss", 
              axes=FALSE)
-        axis(1, at=1:M, labels=model.names); axis(2)
+        axis(1, at=break.number, labels=model.names); axis(2)
         abline(v = which.min(ave.loss), lty=3, col="red")
     }
-    return(list(ave.loss, logmarglike, State, Tau, Tau.samp))
+    return(list(ave.loss = ave.loss, logmarglike=logmarglike, State=State, Tau=Tau, Tau.samp=Tau.samp))
 }
