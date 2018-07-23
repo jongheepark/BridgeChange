@@ -50,19 +50,24 @@ Detect a break number using different metrics
 \examples{
    \dontrun{
    set.seed(1973)
-   ## Generate an array (30 by 30 by 40) with block transitions
-   ## from 2 blocks to 3 blocks
-   out <- BridgeChangeSim(ntime=50, predictor = 50, rho=0, constant.p =0, sign.change.tune = 4,
-          positive.jump=FALSE, varying.p = varying.p, break.point = 0.5, dgp.only=TRUE)
-   y=out$y.c; X=out$x.c   
- 
+   ## One break test
+   out <- BridgeChangeSim(ntime=20, predictor = 10, n.break=1, constant.p =0, varying.p = 0.4, dgp.only=TRUE)
+
    ## Fit multiple models for break number detection using Bayesian model comparison
-   detect <- BreakDiagnostic(y=y, X=X)
+   detect <- BreakDiagnostic(y=out$y.c, X=out$x.c)
    
    ## Look at the graph
-   detect[[1]]
+   detect[[1]]; print(detect[[2]])
 
-   print(detect[[2]])
+   ## Two break test
+   out <- BridgeChangeSim(ntime=20, predictor = 10, n.break=2, constant.p =0, varying.p = 0.4, dgp.only=TRUE)
+
+   ## Fit multiple models for break number detection using Bayesian model comparison
+   detect <- BreakDiagnostic(y=out$y.c, X=out$x.c)
+   
+   ## Look at the graph
+   detect[[1]]; print(detect[[2]])
+  
 }
 
 

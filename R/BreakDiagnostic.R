@@ -44,20 +44,24 @@
 #' @examples
 #'    \dontrun{
 #'    set.seed(1973)
-#'    ## Generate an array (30 by 30 by 40) with block transitions
-#'    ## from 2 blocks to 3 blocks
-#'    out <- BridgeChangeSim(ntime=20, predictor = 10, , constant.p =0, varying.p = 0.4, dgp.only=TRUE)
+#'    ## One break test
+#'    out <- BridgeChangeSim(ntime=20, predictor = 10, n.break=1, constant.p =0, varying.p = 0.4, dgp.only=TRUE)
 #'
-#'    ## centered data
-#'    y=out$y.c; X=out$x.c   
-#'  
 #'    ## Fit multiple models for break number detection using Bayesian model comparison
-#'    detect <- BreakDiagnostic(y=y, X=X)
+#'    detect <- BreakDiagnostic(y=out$y.c, X=out$x.c)
 #'    
 #'    ## Look at the graph
-#'    detect[[1]]
+#'    detect[[1]]; print(detect[[2]])
 #'
-#'    print(detect[[2]])
+#'    ## Two break test
+#'    out <- BridgeChangeSim(ntime=20, predictor = 10, n.break=2, constant.p =0, varying.p = 0.4, dgp.only=TRUE)
+#'
+#'    ## Fit multiple models for break number detection using Bayesian model comparison
+#'    detect <- BreakDiagnostic(y=out$y.c, X=out$x.c)
+#'    
+#'    ## Look at the graph
+#'    detect[[1]]; print(detect[[2]])
+#'   
 #' }
 #'
 #' 
@@ -70,7 +74,7 @@ BreakDiagnostic <- function(y, X, mcmc=100, burn=100, verbose=100, thin=1, break
     out <- as.list(rep(NA, break.upper))
     for(m in 1:(break.upper+1)){
         ## to save time and to be more conservative, use randomly generated initial states
-        out[[m]] <- BridgeChangeReg(y = y, X = X, n.break = m,
+        out[[m]] <- BridgeChangeReg(y = y, X = X, n.break = m-1,
                                     mcmc=mcmc, burn=burn, thin=thin, verbose=verbose,
                                     Waic = TRUE, marginal = TRUE)
     }
@@ -107,7 +111,8 @@ BreakDiagnostic <- function(y, X, mcmc=100, burn=100, verbose=100, thin=1, break
     g1 <- ggplot(data= data_long, mapping = aes(x = model, y = value, group = Metric, color = Metric)) +
         geom_line(size=0.2) + geom_point(cex=3, alpha=1/2) + facet_wrap(~Metric, nrow=1, ncol=4, scales = "free_y") + 
         labs(x = "Model", y = "Value") + theme_bw() +
-        theme(legend.key = element_blank(),
+        theme(legend.position="none",
+              legend.key = element_blank(),
               plot.title = element_text(hjust = 0.5))
     
     return(list(graph=g1, result=result))
