@@ -5,8 +5,8 @@
 \title{Bridge Regression with Change-point}
 \usage{
 BridgeChangeReg(y, X, n.break = 0, scale.data = TRUE, intercept = TRUE,
-  mcmc = 100, burn = 100, verbose = 100, thin = 1, c0 = 0.1,
-  d0 = 0.1, nu.shape = 2, nu.rate = 2, beta.start = NULL,
+  mcmc = 100, burn = 100, verbose = 100, thin = 1, reduce.mcmc = NULL,
+  c0 = 0.1, d0 = 0.1, nu.shape = 2, nu.rate = 2, beta.start = NULL,
   known.alpha = FALSE, alpha.start = 1, alpha.limit = FALSE,
   alpha.MH = TRUE, beta.alg = "SVD", Waic = FALSE, marginal = FALSE)
 }
@@ -35,6 +35,9 @@ We recommend \code{intercept = TRUE} when the number of break is not zero (chang
 \item{verbose}{Iterations at which the results are printed on the console. Default is every 100th iteration.}
 
 \item{thin}{Thinning for gibbs updates. Default is 1 (no thinning).}
+
+\item{reduce.mcmc}{The number of reduced MCMC iterations for marginal likelihood computations.
+If \code{reduce.mcmc = NULL}, \code{mcmc/thin} is used.}
 
 \item{c0}{Scale parameter for Gamma distribution. Used for the prior of \eqn{\sigma^2}.
 Default is 0.1.}

@@ -35,6 +35,10 @@
 #' Iterations at which the results are printed on the console. Default is every 100th iteration.
 #' @param thin
 #' Thinning for gibbs updates. Default is 1 (no thinning).
+#'
+#' @param reduce.mcmc The number of reduced MCMC iterations for marginal likelihood computations.
+#' If \code{reduce.mcmc = NULL}, \code{mcmc/thin} is used.            
+
 #' @param c0
 #' Scale parameter for Gamma distribution. Used for the prior of \eqn{\sigma^2}.
 #' Default is 0.1.
@@ -89,6 +93,7 @@ BridgeChangeReg <- function(
     n.break = 0,                                      # break
     scale.data = TRUE,  intercept=TRUE,               # data transformations
     mcmc = 100, burn = 100, verbose = 100, thin = 1,  # mcmc related args
+    reduce.mcmc = NULL, 
     c0 = 0.1, d0 = 0.1, nu.shape=2.0, nu.rate=2.0,    # priors
     beta.start = NULL,                                # initial values
     known.alpha = FALSE, alpha.start = 1,             # alpha related args
@@ -205,7 +210,7 @@ BridgeChangeReg <- function(
     Pmat        <- matrix(NA, nstore, ns)
     ## Ddraws <- matrix(data=0, nstore, ns*Q*Q)
     ## psdraws <- matrix(data=0, ntime, ns)
-    sdraws <- matrix(data=0, nstore, ntime)
+    sdraws <- matrix(data=1, nstore, ntime)
     Z.loglike.array <- matrix(data=0, nstore, ntime)
 
     ## make var names for each regime

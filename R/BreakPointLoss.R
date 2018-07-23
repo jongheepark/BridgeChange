@@ -26,8 +26,12 @@ trace.break <- function(tau.samp, tau){
 findBreakPoint <- function (mcmcout, start = 1) 
 {
     out <- attr(mcmcout, "prob.state")
+    
     y <- attr(mcmcout, "y")
     m <- attr(mcmcout, "m")
+    ## time <- length(y)
+    ## out <- sapply(1:(m+1), function(j){sapply(1:time, function(t){mean(sout[,t]==j)})})
+    
     if (!is.ts(y)) 
         y <- ts(y, start)
     time.frame <- as.vector(time(y))
@@ -35,8 +39,7 @@ findBreakPoint <- function (mcmcout, start = 1)
         pr.st <- c(0, diff(out[, (m + 1)]))
         pr.st[pr.st < 0] <- 0
         cp <- which(cumsum(pr.st) > 0.5)[1] - 1
-    }
-    else {
+    }else {
         cp <- rep(NA, m)
         for (i in 2:m) {
             pr.st <- c(0, diff(out[, i]))
@@ -47,9 +50,12 @@ findBreakPoint <- function (mcmcout, start = 1)
         pr.st[pr.st < 0] <- 0
         cp[m] <- which(cumsum(pr.st) > 0.5)[1] - 1
     }
-    cp.means <- rep(NA, m + 1)
-    cp.start <- c(1, cp + 1)
-    cp.end <- c(cp, length(y))
+    if(sum(is.na(cp))>0){
+        cat("\n At break = ", m, " one state is dominated by other states and a break point is not defined for this state. \n")
+    }
+    ## cp.means <- rep(NA, m + 1)
+    ## cp.start <- c(1, cp + 1)
+    ## cp.end <- c(cp, length(y))
     return(cp + time.frame[1])
 }
 
@@ -119,9 +125,8 @@ findBreakPoint <- function (mcmcout, start = 1)
 #' }
 #'
 #' 
-BreakPointLoss <- function(..., marginal=FALSE, display=TRUE){
+BreakPointLoss <- function(model.list, marginal=FALSE, display=TRUE){
 
-    model.list <- list(...)
     M <- length(model.list)
     this.call <- match.call()
     this.call.string <- deparse(this.call)

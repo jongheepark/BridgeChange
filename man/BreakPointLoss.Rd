@@ -4,19 +4,19 @@
 \alias{BreakPointLoss}
 \title{Compute the Average Loss of Hidden State Changes from Expected Break Points}
 \usage{
-BreakPointLoss(..., marginal = FALSE, display = TRUE)
+BreakPointLoss(model.list, marginal = FALSE, display = TRUE)
 }
 \arguments{
-\item{...}{MCMCpack output objects. These have to be of class
-\code{mcmc} and have a \code{logmarglike} attribute. In what
-follows, we let \code{M} denote the total number of models to be
-compared.}
-
 \item{marginal}{If \code{marginal} is TRUE, \code{logmarglike} will be reported.}
 
 \item{display}{If \code{display} is TRUE, a plot of \code{ave.loss} will be produced. 
 
 \code{BreakPointLoss}. ave.loss, logmarglike, State, Tau, Tau.samp}
+
+\item{...}{MCMC output objects. These have to be of class
+\code{mcmc} and have a \code{logmarglike} attribute. In what
+follows, we let \code{M} denote the total number of models to be
+compared.}
 }
 \value{
 \code{BreakPointLoss} returns five objects. They are: \code{ave.loss} the expected loss for each model
@@ -54,8 +54,6 @@ sigma.mu=sd(y)
 sigma.var=var(y)
 mcmc = 1000
 ## models
-model0 <-  MCMCregressChange(formula, m=0, b0=b0, B0=B0, mcmc=mcmc, burnin=mcmc,
-           sigma.mu=sigma.mu, sigma.var=sigma.var, marginal.likelihood="Chib95")
 model1 <-  MCMCregressChange(formula, m=1, b0=b0, B0=B0, mcmc=mcmc, burnin=mcmc,
           sigma.mu=sigma.mu, sigma.var=sigma.var, marginal.likelihood="Chib95")
 model2 <-  MCMCregressChange(formula, m=2, b0=b0, B0=B0, mcmc=mcmc, burnin=mcmc,
@@ -67,7 +65,7 @@ model4 <-  MCMCregressChange(formula, m=4, b0=b0, B0=B0, mcmc=mcmc, burnin=mcmc,
 model5 <-  MCMCregressChange(formula, m=5, b0=b0, B0=B0, mcmc=mcmc, burnin=mcmc,
            sigma.mu=sigma.mu, sigma.var=sigma.var, marginal.likelihood="Chib95")
 
-out <- BreakPointLoss(model0, model1, model2, model3, model4, model5, marginal=TRUE)
+out <- BreakPointLoss(model1, model2, model3, model4, model5, marginal=TRUE)
 
 print(out[["ave.loss"]])
 }
