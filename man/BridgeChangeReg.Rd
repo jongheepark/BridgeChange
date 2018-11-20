@@ -4,11 +4,12 @@
 \alias{BridgeChangeReg}
 \title{Bridge Regression with Change-point}
 \usage{
-BridgeChangeReg(y, X, n.break = 0, scale.data = TRUE, intercept = TRUE,
-  mcmc = 100, burn = 100, verbose = 100, thin = 1, reduce.mcmc = NULL,
-  c0 = 0.1, d0 = 0.1, nu.shape = 2, nu.rate = 2, beta.start = NULL,
-  known.alpha = FALSE, alpha.start = 1, alpha.limit = FALSE,
-  alpha.MH = TRUE, beta.alg = "SVD", Waic = FALSE, marginal = FALSE)
+BridgeChangeReg(y, X, n.break = 0, scale.data = TRUE,
+  intercept = TRUE, mcmc = 100, burn = 100, verbose = 100,
+  thin = 1, reduce.mcmc = NULL, c0 = 0.1, d0 = 0.1, nu.shape = 2,
+  nu.rate = 2, beta.start = NULL, known.alpha = FALSE,
+  alpha.start = 1, alpha.limit = FALSE, alpha.MH = TRUE,
+  beta.alg = "SVD", Waic = FALSE, marginal = FALSE)
 }
 \arguments{
 \item{y}{Outcome vector.}

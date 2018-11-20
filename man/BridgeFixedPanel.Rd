@@ -5,10 +5,10 @@
 \title{Sparse Change Point Model with Fixed Effect}
 \usage{
 BridgeFixedPanel(formula, data, index, model, effect, standardize = TRUE,
-  inter = FALSE, n.break = 1, mcmc = 100, burn = 100, verbose = 100,
-  thin = 1, b0 = 0, B0 = 1, c0 = 0.1, d0 = 0.1, r0 = 1, R0 = 1,
-  nu.shape = 2, nu.rate = 2, alpha = 1, Waic = FALSE,
-  marginal = FALSE)
+  inter = FALSE, n.break = 1, mcmc = 100, burn = 100,
+  verbose = 100, thin = 1, b0 = 0, B0 = 1, c0 = 0.1, d0 = 0.1,
+  r0 = 1, R0 = 1, nu.shape = 2, nu.rate = 2, alpha = 1,
+  Waic = FALSE, marginal = FALSE)
 }
 \arguments{
 \item{data}{Data.frame object.}

@@ -9,15 +9,20 @@ Authors@R: c(
   )
 Description: BridgeChange is a package for uncovering time-varying interaction effects in regression models. It implements change-point analysis using Bayesian Bridge prior where regression parameters (including all possible pairwise interactions) are allowed to change multiple times.
 License: GPL (>= 2)
-Depends: MCMCpack, mvtnorm,
-    plm,     Rcpp (>= 0.12.11), tidyr,
-    RcppArmadillo, copula, BayesBridge
+Depends: 
+    copula,
+    MCMCpack, 
+    mvtnorm,
+    plm,
+    Rcpp (>= 0.12.11), 
+    tidyr,
+    RcppArmadillo
 Imports:
     coda (>= 0.11-3),
     pgnorm,
-    truncnorm    
+    truncnorm 
 LinkingTo: Rcpp, RcppArmadillo
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.0
 Suggests: knitr,
     rmarkdown
 VignetteBuilder: knitr
