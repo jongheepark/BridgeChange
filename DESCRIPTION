@@ -1,8 +1,8 @@
 Package: BridgeChange
 Type: Package
-Title: Change-point models for time-series, panel data with Bayesian Bridge prior.
+Title: Bayesian Change-point models with Bridge prior for analyzing time-series and panel data.
 Version: 1.2.1
-Date: 2017-08-23
+Date: 2018-11-20
 Authors@R: c(
   person("Jong Hee", "Park", email = "jongheepark@snu.ac.kr", role = c("aut")),
   person("Soichiro", "Yamauchi", email = "syamauchi@princeton.edu", role = c("aut", "cre"))
