@@ -27,11 +27,9 @@ Overview
 Time-series Data
 ----------------
 
-$$
-\\widehat{\\beta} = \\text{argmin}\_{\\beta}\\bigg\\{
-\\frac{1}{2}\\sum^{n}\_{t=1}(y\_{t} - \\mathbf{X}^{\\top}\_{t}\\beta)^{2}
-+ \\nu \\sum^{p}\_{j=1}|\\beta\_{j}|^{\\alpha}\\bigg\\}
-$$
+`BridgeChangeReg()` can be used to analyse time-series data with possible change-points. The functions fits the following linear model:
+*y*<sub>*t*</sub> = **X**<sup>⊤</sup>*β*<sub>*s*<sub>*t*</sub></sub> + *ϵ*<sub>*t*</sub>
+ where *s*<sub>*t*</sub> is a indicator of states.
 
 This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
