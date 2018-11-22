@@ -1,5 +1,31 @@
-R Markdown
-----------
+Table of Contents
+-----------------
+
+1.  [Installation](#installation)
+2.  [Overview](#overview)
+3.  [Time-series Data](#time-series-data)
+4.  [Panel Data](#panel-data)
+
+Installation
+------------
+
+You can install the most recent version of `BridgeChange` from Gitub using the [`devtools`](https://github.com/r-lib/devtools) package.
+
+``` r
+# install devtools if necessary
+install.packages("devtools")
+
+# install BridgeChange from Github
+devtools::install_github("soichiroy/BridgeChange")
+```
+
+Overview
+--------
+
+\`Bayesian
+
+Time-series Data
+----------------
 
 This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
@@ -17,11 +43,5 @@ summary(cars)
     ##  3rd Qu.:19.0   3rd Qu.: 56.00  
     ##  Max.   :25.0   Max.   :120.00
 
-Including Plots
----------------
-
-You can also embed plots, for example:
-
-![](readme_files/figure-markdown_github/pressure-1.png)
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Panel Data
+----------
