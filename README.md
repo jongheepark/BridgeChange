@@ -1,10 +1,15 @@
 Table of Contents
 -----------------
 
-1.  [Installation](#installation)
-2.  [Overview](#overview)
+1.  [Overview](#overview)
+2.  [Installation](#installation)
 3.  [Time-series Data](#time-series-data)
 4.  [Panel Data](#panel-data)
+
+Overview
+--------
+
+`R` package `BridgeChange()` constains functions useful to analyze time-series data and panel data with possibly large number of covariates and change-points. This package offers a Bayesian inference on the linear regression mode under high-dimensinal covariates whose effects on the outcome are allowed to be heterogeneous across time. This package will be useful to discover a set of predictive variables under dynamic setting where time-varying effect is expected to exist in many cases.
 
 Installation
 ------------
@@ -18,11 +23,6 @@ install.packages("devtools")
 # install BridgeChange from Github
 devtools::install_github("soichiroy/BridgeChange")
 ```
-
-Overview
---------
-
-\`Bayesian
 
 Time-series Data
 ----------------
