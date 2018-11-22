@@ -24,6 +24,8 @@ Overview
 
 \`Bayesian
 
+*y*<sub>*t*</sub> = **X**<sub>*t*</sub><sup>⊤</sup>*β* + *ϵ*<sub>*t*</sub>
+
 Time-series Data
 ----------------
 
