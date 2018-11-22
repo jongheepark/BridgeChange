@@ -24,10 +24,14 @@ Overview
 
 \`Bayesian
 
-*y*<sub>*t*</sub> = **X**<sub>*t*</sub><sup>⊤</sup>*β* + *ϵ*<sub>*t*</sub>
-
 Time-series Data
 ----------------
+
+$$
+\\widehat{\\beta} = \\text{argmin}\_{\\beta}\\bigg\\{
+\\frac{1}{2}\\sum^{n}\_{t=1}(y\_{t} - \\mathbf{X}^{\\top}\_{t}\\beta)^{2}
++ \\nu \\sum^{p}\_{j=1}|\\beta\_{j}|^{\\alpha}\\bigg\\}
+$$
 
 This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
