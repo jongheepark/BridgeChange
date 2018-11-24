@@ -27,9 +27,15 @@ devtools::install_github("soichiroy/BridgeChange")
 Time-series Data
 ----------------
 
-`BridgeChangeReg()` can be used to analyse time-series data with possible change-points. The functions fits the following linear model:
-*y*<sub>*t*</sub> = **X**<sup>⊤</sup>*β*<sub>*s*<sub>*t*</sub></sub> + *ϵ*<sub>*t*</sub>
- where *s*<sub>*t*</sub> is a indicator of states.
+### Model
+
+`BridgeChangeReg()` can be used to analyse time-series data with possible change-points.
+
+The functions fits the linear model:
+*y*<sub>*t*</sub> = **X**<sub>*t*</sub><sup>⊤</sup>*β*<sub>*s*<sub>*t*</sub></sub> + *ϵ*<sub>*t*</sub>
+ where *s*<sub>*t*</sub> ∈ {1, …, *M*} is an indicator of states.
+
+### Example
 
 This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 

@@ -1,5 +1,5 @@
 ---
-title: "BridgeChangeReg"
+title: "Bridge Change"
 author: 
 - Jong Hee Park
 - Soichiro Yamauchi
@@ -19,14 +19,14 @@ knitr::opts_chunk$set(
 ```
 
 
-This vignettes documents the usage of `BridgeChangeReg()` function in `BridgeChange` package.
+This vignettes documents the usage of functions in `BridgeChange` package.
 
 ## No Change-point Case
 
 Consider the following model,
-\[
-    y_{t} = X_{t}\beta + \epsilon_{t}
-\]
+$$
+    y_{t} = \mathbf{X}^{\top}_{t}\beta_{s_{t}} + \epsilon_{t}
+$$
 
 
 ## Change-point Case

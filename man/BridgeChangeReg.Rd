@@ -2,14 +2,17 @@
 % Please edit documentation in R/BridgeChangeReg.r
 \name{BridgeChangeReg}
 \alias{BridgeChangeReg}
+\alias{BridgeChangeReg.default}
 \title{Bridge Regression with Change-point}
 \usage{
-BridgeChangeReg(y, X, n.break = 0, scale.data = TRUE,
+BridgeChangeReg(y, X, n.break = 0, ...)
+
+\method{BridgeChangeReg}{default}(y, X, n.break = 0, scale.data = TRUE,
   intercept = TRUE, mcmc = 100, burn = 100, verbose = 100,
   thin = 1, reduce.mcmc = NULL, c0 = 0.1, d0 = 0.1, nu.shape = 2,
-  nu.rate = 2, beta.start = NULL, known.alpha = FALSE,
-  alpha.start = 1, alpha.limit = FALSE, alpha.MH = TRUE,
-  beta.alg = "SVD", Waic = FALSE, marginal = FALSE)
+  nu.rate = 2, known.alpha = FALSE, alpha.start = 1,
+  alpha.limit = FALSE, alpha.MH = TRUE, beta.start = NULL,
+  beta.alg = "SVD", waic = FALSE, marginal = FALSE)
 }
 \arguments{
 \item{y}{Outcome vector.}
@@ -27,7 +30,7 @@ We recommend \code{scale.data = TRUE} unless the original data are already scale
 \item{intercept}{If \code{TRUE}, estimate intercept by MLE.
 Default is \code{TRUE}.
 This option does not affect the result when \code{n.break = 0}.
-We recommend \code{intercept = TRUE} when the number of break is not zero (change-point estimation).}
+We recommend \code{intercept = TRUE} when the number of break is not zero.}
 
 \item{mcmc}{The number of iterations for gibbs updates. Default is 100.}
 
@@ -52,9 +55,6 @@ Default is 2.0.}
 \item{nu.rate}{Rate parameter for Gamma distribution. Used for the prior for \eqn{\tau}.
 Default is 2.0.}
 
-\item{beta.start}{Starting values of beta. If \code{NULL}, randomly choose beta.start from OLS or standard normal distribution.
-Default is \code{NULL}.}
-
 \item{known.alpha}{If \code{TRUE}, a user must specify a numeric value \eqn{[0, 2]} in \code{alpha.start}.
 Default is \code{FALSE} and therefore \eqn{\alpha} will be estimated.}
 
@@ -69,11 +69,14 @@ Default is \code{FALSE}.}
 If \code{FALSE} the Griddy gibbs sampler is used instead.
 Default is \code{TRUE}.}
 
+\item{beta.start}{Starting values of beta. If \code{NULL}, randomly choose beta.start from OLS or standard normal distribution.
+Default is \code{NULL}.}
+
 \item{beta.alg}{An algorithm to sample beta.
 Default is \code{beta.alg = "SVD"}.
 Also supported is \code{beta.alg = "BCK"} and \code{beta.alg = "CHL"}.}
 
-\item{Waic}{If \code{TRUE}, WAIC is computed after the parameter estimation.
+\item{waic}{If \code{TRUE}, WAIC is computed after the parameter estimation.
 Default is \code{FALSE}.}
 
 \item{marginal}{If \code{TRUE}, the marginal likelihood is computed based on Chib's method.

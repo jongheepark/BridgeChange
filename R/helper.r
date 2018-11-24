@@ -252,38 +252,40 @@ MarginalCompare <- function(outlist){
 
 ## code by Gelman and Vehtari (2014)
 colVars <- function(a) {
-    n <- dim(a)[[1]]; c <- dim(a)[[2]];
-    return(.colMeans(((a - matrix(.colMeans(a, n, c), nrow = n, ncol =
-                                      c, byrow = TRUE)) ^ 2), n, c) * n / (n - 1))}
+  n <- dim(a)[[1]]; c <- dim(a)[[2]];
+  out <- .colMeans(((a - matrix(.colMeans(a, n, c),
+    nrow = n, ncol = c, byrow = TRUE)) ^ 2), n, c) * n / (n - 1))
+  return(out)
+}
 
-waic <- function(log_lik){
-    ## log_lik <- extract (stanfit, "log_lik")$log_lik
-    dim(log_lik) <- if (length(dim(log_lik))==1) c(length(log_lik),1) else
-    c(dim(log_lik)[1], prod(dim(log_lik)[2:length(dim(log_lik))]))
-    S <- nrow(log_lik)
-    n <- ncol(log_lik)
-    lpd <- log(colMeans(exp(log_lik)))
-    p_waic <- colVars(log_lik)
-    p_waic1 <- 2*(log(colMeans(exp(log_lik))) - colMeans(log_lik))
-    elpd_waic <- lpd - p_waic
-    waic <- -2*elpd_waic
-    waic2 <- -2*(lpd - p_waic1)
-    loo_weights_raw <- 1/exp(log_lik-max(log_lik))
-    loo_weights_normalized <- loo_weights_raw/
-        matrix(colMeans(loo_weights_raw),nrow=S,ncol=n,byrow=TRUE)
-    loo_weights_regularized <- pmin (loo_weights_normalized, sqrt(S))
-    elpd_loo <- log(colMeans(exp(log_lik)*loo_weights_regularized)/
-                        colMeans(loo_weights_regularized))
-    p_loo <- lpd - elpd_loo
-    pointwise <- cbind(waic,waic2, lpd,p_waic,p_waic1, elpd_waic,p_loo,elpd_loo)
-    total <- colSums(pointwise)
-    ## this is strange? SE = s/sqrt(n)
-    se <- sqrt(n*colVars(pointwise))
-    ## se <- sqrt(colVars(pointwise)/n)
-    waic.ci <- c(total[1] - 1.96*se[1], total[1] + 1.96*se[1])
-    return(list(waic=total["waic"], waic2=total["waic2"],  elpd_waic=total["elpd_waic"],
-                p_waic=total["p_waic"], p_waic1 = total["p_waic1"], elpd_loo=total["elpd_loo"], p_loo=total["p_loo"],
-                pointwise=pointwise, total=total, se=se, waic.ci=waic.ci))
+waic_calc <- function(log_lik){
+  ## log_lik <- extract (stanfit, "log_lik")$log_lik
+  dim(log_lik) <- if (length(dim(log_lik))==1) c(length(log_lik),1) else
+  c(dim(log_lik)[1], prod(dim(log_lik)[2:length(dim(log_lik))]))
+  S <- nrow(log_lik)
+  n <- ncol(log_lik)
+  lpd <- log(colMeans(exp(log_lik)))
+  p_waic <- colVars(log_lik)
+  p_waic1 <- 2*(log(colMeans(exp(log_lik))) - colMeans(log_lik))
+  elpd_waic <- lpd - p_waic
+  waic <- -2*elpd_waic
+  waic2 <- -2*(lpd - p_waic1)
+  loo_weights_raw <- 1/exp(log_lik-max(log_lik))
+  loo_weights_normalized <- loo_weights_raw/
+  matrix(colMeans(loo_weights_raw),nrow=S,ncol=n,byrow=TRUE)
+  loo_weights_regularized <- pmin (loo_weights_normalized, sqrt(S))
+  elpd_loo <- log(colMeans(exp(log_lik)*loo_weights_regularized)/
+  colMeans(loo_weights_regularized))
+  p_loo <- lpd - elpd_loo
+  pointwise <- cbind(waic,waic2, lpd,p_waic,p_waic1, elpd_waic,p_loo,elpd_loo)
+  total <- colSums(pointwise)
+  ## this is strange? SE = s/sqrt(n)
+  se <- sqrt(n*colVars(pointwise))
+  ## se <- sqrt(colVars(pointwise)/n)
+  waic.ci <- c(total[1] - 1.96*se[1], total[1] + 1.96*se[1])
+  return(list(waic=total["waic"], waic2=total["waic2"],  elpd_waic=total["elpd_waic"],
+  p_waic=total["p_waic"], p_waic1 = total["p_waic1"], elpd_loo=total["elpd_loo"], p_loo=total["p_loo"],
+  pointwise=pointwise, total=total, se=se, waic.ci=waic.ci))
 }
 #
 
@@ -1278,3 +1280,25 @@ SLOG <- function(x, y, l, times = 1e-6, thresh = 1e-10, start=NULL){
 
 ##   drop(out)
 ## }
+
+
+estimate_intercept_reg <- function(y, Xorig, beta, n.break, intercept) {
+  ns <- n.break + 1
+
+  if (n.break == 0 & intercept == TRUE) {
+    ## fit intercept
+    beta0 <- mean(y) - as.vector(colMeans(Xorig) %*% t(beta))
+    # cat("beta0 = ", beta0, "\n")
+  } else if (n.break > 0 & intercept == TRUE) {
+    beta0 <- matrix(NA, nrow = ns, ncol = 1)
+    # ydm   <- as.vector(as.vector(y) - tapply(y, state, mean)[state])
+    for (j in 1:ns) {
+      beta0[j,] <- mean(y[state == j]) - colMeans(Xorig[state == j, , drop = FALSE]) %*% beta[j,]
+    }
+  } else if (n.break > 0 & intercept == FALSE) {
+    beta0 <- matrix(0, nrow = ns, ncol = 1)
+    # ydm   <- as.vector(as.vector(y) - tapply(y, state, mean)[state])
+  }
+
+  return(beta0)
+}
