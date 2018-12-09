@@ -1205,6 +1205,8 @@ BridgeMixedPanel <- function(
     ## attr(output, "call")   <- cl
     attr(output, "y")       <- y[1:ntime]
     attr(output, "X")       <- X[1:ntime, ]
+    attr(output, "y.all")   <- y
+    attr(output, "X.all")   <- X
     attr(output, "m")       <- m
     attr(output, "nsubj")   <- nsubj
     attr(output, "ntime")   <- ntime
