@@ -5,12 +5,12 @@
 \title{Bridge Regression simulation}
 \usage{
 BridgeChangeSim(ntime = 500, predictor = 100, rho = 0,
-  time.series = FALSE, sign.change.tune = 2, sigma1 = 1,
-  sigma2 = 2, train.ratio = 0.5, fitted.mse = TRUE,
-  constant.p = 0.1, varying.p = 0.2, break.point = 0.5,
-  positive.jump = FALSE, n.break = 1, intercept = FALSE,
-  positive.jump.tune = 1, mcmc = 100, burn = 100, verbose = 100,
-  thin = 1, N = 1, known.alpha = FALSE, dgp.only = FALSE)
+  time.series = FALSE, sign.change.tune = 2, sigma1 = 1, sigma2 = 2,
+  train.ratio = 0.5, fitted.mse = TRUE, constant.p = 0.1,
+  varying.p = 0.2, break.point = 0.5, positive.jump = FALSE,
+  n.break = 1, intercept = FALSE, positive.jump.tune = 1, mcmc = 100,
+  burn = 100, verbose = 100, thin = 1, N = 1, known.alpha = FALSE,
+  dgp.only = FALSE)
 }
 \arguments{
 \item{ntime}{Length of time series}
