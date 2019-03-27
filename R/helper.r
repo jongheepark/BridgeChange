@@ -1313,7 +1313,7 @@ estimate_intercept_reg <- function(y, Xorig, beta, n.break, intercept, state) {
     for (j in 1:ns) {
       beta0[j,] <- mean(y[state == j]) - colMeans(Xorig[state == j, , drop = FALSE]) %*% beta[j,]
     }
-  } else if (n.break > 0 & intercept == FALSE) {
+  } else if (intercept == FALSE) {
     beta0 <- matrix(0, nrow = ns, ncol = 1)
     # ydm   <- as.vector(as.vector(y) - tapply(y, state, mean)[state])
   }

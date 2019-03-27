@@ -31,12 +31,16 @@ $$
 
 ## Change-point Case
 
+```{r, warning=FALSE,echo=FALSE,message=FALSE}
+# load packages 
+require(BridgeChange)
+```
 
 ### One change with no correlation
 
 ```{r}
 # simulate data 
-set.seed(1973);
+set.seed(1973)
 sim <- BridgeChangeSim(ntime=100, predictor = 100, rho=0.0, constant.p = 0, sign.change.tune = 3,
                        positive.jump=FALSE, varying.p = 0.2, break.point = 0.5, dgp.only=TRUE)
 
@@ -44,44 +48,28 @@ plot(1:length(sim$true.beta[1,]), sim$true.beta[1,], xlab="predictor", ylab="coe
 points(sim$true.beta[1,], col="red", pch="1", cex=1)
 points(sim$true.beta[2,], col="blue", pch="2", cex=1)
 
-#
-# ## slope change
-# set.seed(11173);
-# out0 <- SparseChangeReg(y=sim$y.c, X=sim$x.c, scale.data=TRUE,
-#                         mcmc=mcmc, demean=TRUE, intercept=FALSE,
-#                         burn = burn, thin=thin, verbose=verbose,
-#                         alpha.MH=TRUE, n.break = 0, Waic=TRUE, marginal = TRUE)
-#
-# set.seed(11173);
-# out1 <- SparseChangeReg(y=sim$y, X=sim$x, scale.data=TRUE,
-#                         mcmc=100, demean=FALSE, intercept=FALSE,
-#                         burn = 100, thin=1, verbose=verbose,
-#                         alpha.MH=TRUE, n.break = 1, Waic=TRUE, marginal = TRUE)
-#
-# WaicCompare(list(out0, out1))
-# MarginalCompare(list(out0, out1))
-#
-# SparseChange:::plotCoef(out1, scale.back = TRUE, true.beta = sim$true.beta)
-#
-#
-# ## y=out$y.c; X=out$x.c; scale.data=TRUE;
-# ## alpha.MH=TRUE; n.break = 0; Waic=TRUE; marginal = TRUE
-# ## n.break = 1; scale.data = TRUE;
-# ## mcmc = 100; burn = 100; verbose = 100; thin = 1;
-# ## c0 = 0.1; d0 = 0.1; a = NULL; b = NULL; demean=FALSE; intercept=TRUE;
-# ## beta.start = NULL; nu.shape=2.0; nu.rate=2.0; known.s = FALSE;
-# ## alpha.start = 1; known.alpha = FALSE;
-#
-# ## beta.st   <- matrix(apply(out1[, 1:400], 2, mean), ns, K, byrow=TRUE) ## matrix(apply(betadraws, 2, mean), ns, K, byrow=TRUE)
-# ## lambda.st <- matrix(apply(attr(out1, "lambda"), 2, mean), ns, K, byrow=TRUE)
-# ## sig2.st   <- apply(out1[, 401:402], 2, mean)
-# ## alpha.st  <- apply(attr(out1, "alpha"), 2, mean)## apply(alphadraws, 2, mean)
-# ## tau.st    <- apply(attr(out1, "tau"), 2, mean)## apply(taudraws, 2, mean)
-# ## if(n.break > 0){
-# ##     P.st <- apply(Pmat, 2, mean)
-# ## }
-# ## mu.st.state <- out$x.c %*% t(beta.st)
-#
+## MCMC param 
+mcmc <- burn <- 100; thin <- 1; verbose <- 100
+
+## slope change
+set.seed(11173)
+out0 <- BridgeChangeReg(y=sim$y.c, X=sim$x.c, scale.data=TRUE, intercept=FALSE,
+                        mcmc=mcmc, burn = burn, thin=thin, verbose=verbose,
+                        alpha.MH=TRUE, n.break = 0, waic=TRUE)
+
+set.seed(11173)
+out1 <- BridgeChangeReg(y=sim$y, X=sim$x, scale.data=TRUE, intercept=FALSE,
+                        mcmc=mcmc, burn=burn, thin=thin, verbose=verbose,
+                        alpha.MH=TRUE, n.break = 1, waic=TRUE)
+
+# model selection 
+wiac <- WaicCompare(list(out0, out1), print = TRUE)
+
+# state plot 
+MCMCpack::plotState(out1)
+```
+
+```{r}
 # ####################################
 # ## one change with small correlation
 # ####################################
