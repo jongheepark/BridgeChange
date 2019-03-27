@@ -27,7 +27,7 @@
 #'
 #'
 #' @author Jong Hee Park, and Soichiro Yamauchi \email{syamauchi@princeton.edu}
-#'
+#' @import plm
 #' @export
 BridgeFixedPanel <- function(formula, data, index, model, effect,
                              standardize = TRUE, inter = FALSE, 
@@ -55,8 +55,8 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
     # X <- plm:::model.matrix.pFormula(formula, pdata, rhs = 1, model = model, effect = effect)
     # y <- plm:::pmodel.response.pFormula(formula, pdata, model = model, effect = effect)
 
-    X <- plm:::model.matrix.pFormula(pformula, pdata, rhs = 1, model = model, effect = effect)
-    y <- plm:::pmodel.response(pformula, pdata, model = model, effect = effect)
+    X <- model.matrix.pFormula(pformula, pdata, rhs = 1, model = model, effect = effect)
+    y <- pmodel.response(pformula, pdata, model = model, effect = effect)
 
     ##
     ## centering X and Y?

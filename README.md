@@ -31,7 +31,7 @@ Time-series Data
 `BridgeChangeReg()` can be used to analyse time-series data with possible change-points.
 
 The functions fits the linear model:
-*y*<sub>*t*</sub> = **X**<sub>*t*</sub><sup>⊤</sup>*β*<sub>*s*<sub>*t*</sub></sub> + *ϵ*<sub>*t*</sub>
+*y*<sub>*t*</sub> = **X**<sub>*t*</sub><sup>⊤</sup>*β*<sub>*s*<sub>*t*</sub></sub> + *ϵ*<sub>*s*<sub>*t*</sub></sub>
  where *s*<sub>*t*</sub> ∈ {1, …, *M*} is an indicator of states.
 
 ### Example
@@ -45,15 +45,6 @@ set.seed(1973);
 
 out <- BridgeChangeSim(ntime=100, predictor = 50, rho=0.2, constant.p = 0.5,
                        positive.jump=FALSE, varying.p = 0.2, break.point = 0.5, dgp.only=TRUE)
-#> Loading required package: glmnet
-#> Loading required package: Matrix
-#> 
-#> Attaching package: 'Matrix'
-#> The following object is masked from 'package:tidyr':
-#> 
-#>     expand
-#> Loading required package: foreach
-#> Loaded glmnet 2.0-16
 
 # plot simulated coefficients 
 plot(1:length(out$true.beta[1,]), out$true.beta[1,], 
@@ -95,7 +86,7 @@ out0 <- BridgeChangeReg(y=out$y, X=out$x, scale.data=TRUE, intercept=TRUE,
  Estimating parameters. Now at 1000 of 1000
 #> ----------------------------------------------------
 #> WAIC:  242.6075 
-#> Run time:  7.557 
+#> Run time:  7.687 
 #> ----------------------------------------------------
 
 # fit one-break model 
@@ -113,7 +104,7 @@ out1 <- BridgeChangeReg(y=out$y, X=out$x, scale.data=TRUE,intercept=TRUE,
  Estimating parameters. Now at 1000 of 1000
 #> ----------------------------------------------------
 #> WAIC:  31.34521 
-#> Run time:  13.055 
+#> Run time:  13.405 
 #> ----------------------------------------------------
 
 # fit one-break model 
@@ -131,7 +122,7 @@ out2 <- BridgeChangeReg(y=out$y, X=out$x, scale.data=TRUE,intercept=TRUE,
  Estimating parameters. Now at 1000 of 1000
 #> ----------------------------------------------------
 #> WAIC:  56.21819 
-#> Run time:  18.103 
+#> Run time:  19.578 
 #> ----------------------------------------------------
 ```
 

@@ -49,7 +49,7 @@ devtools::install_github("soichiroy/BridgeChange")
 
 The functions fits the linear model:
 $$
-y_{t} = \mathbf{X}^{\top}_{t}\beta_{s_{t}} + \epsilon_{t}
+y_{t} = \mathbf{X}^{\top}_{t}\beta_{s_{t}} + \epsilon_{s_{t}}
 $$
 where $s_{t} \in \{1, \ldots, M\}$ is an indicator of states.
 
@@ -61,7 +61,7 @@ require(BridgeChange)
 
 ### Example 
 
-```{r}
+```{r, message=FALSE,warning=FALSE}
 set.seed(1973);
 
 ##
