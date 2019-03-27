@@ -2,17 +2,14 @@
 % Please edit documentation in R/BridgeChangeReg.r
 \name{BridgeChangeReg}
 \alias{BridgeChangeReg}
-\alias{BridgeChangeReg.default}
 \title{Bridge Regression with Change-point}
 \usage{
-BridgeChangeReg(y, X, n.break = 0, ...)
-
-\method{BridgeChangeReg}{default}(y, X, n.break = 0, scale.data = TRUE,
-  intercept = TRUE, mcmc = 100, burn = 100, verbose = 100, thin = 1,
-  reduce.mcmc = NULL, c0 = 0.1, d0 = 0.1, nu.shape = 2, nu.rate = 2,
-  known.alpha = FALSE, alpha.start = 1, alpha.limit = FALSE,
-  alpha.MH = TRUE, beta.start = NULL, beta.alg = "SVD", waic = FALSE,
-  marginal = FALSE)
+BridgeChangeReg(y, X, n.break = 0, scale.data = TRUE,
+  intercept = TRUE, mcmc = 100, burn = 100, verbose = 100,
+  thin = 1, reduce.mcmc = NULL, c0 = 0.1, d0 = 0.1, nu.shape = 2,
+  nu.rate = 2, known.alpha = FALSE, alpha.start = 1,
+  alpha.limit = FALSE, alpha.MH = TRUE, beta.start = NULL,
+  beta.alg = "SVD", waic = FALSE, marginal = FALSE)
 }
 \arguments{
 \item{y}{Outcome vector.}
@@ -27,8 +24,7 @@ Default is \code{n.break = 0}.}
 Default is \code{TRUE}.
 We recommend \code{scale.data = TRUE} unless the original data are already scaled.}
 
-\item{intercept}{If \code{TRUE}, estimate intercept by MLE.
-Default is \code{TRUE}.
+\item{intercept}{A boolean. If \code{TRUE}, estimate intercept by MLE. The estimated intercept is used to detect breaks.
 This option does not affect the result when \code{n.break = 0}.
 We recommend \code{intercept = TRUE} when the number of break is not zero.}
 
@@ -94,17 +90,20 @@ Univariate response linear change-point model with Bridge prior.
 ####################################
 ## no change
 ####################################
+
 set.seed(1999)
-mcmc = burn = 100; thin=1; verbose=100;
 
 ## simulate data
 K <- 100
 n <- 100
 X <- matrix(rnorm(n*K), n, K)
-sig2 <- .2
+sig2 <- 0.2
 beta.true <- matrix(rnorm(K), K, 1)*5
 beta.true[sample(1:K, K/2, replace=FALSE)] <- 0
 Y <- X\%*\%beta.true + rnorm(n, 0, sqrt(sig2))
+
+## global parameter for estimation 
+mcmc <- burn <- 100; thin <- 1; verbose <- 100;
 
 
 ## fit the model
@@ -119,9 +118,9 @@ beta.est <- coef(out0)
 
 ## plot
 plot(beta.est, beta.true, ylab="TRUE", xlab="EST", type = "n",
-       xlim = range(beta.est), ylim = range(beta.true))
-points(beta.est, beta.true, col="blue")
-abline(a=0, b=1, col="red")
+       xlim = range(beta.est), ylim = range(beta.true), asp = 1)
+abline(a=0, b=1, col="red", lty = 3, lwd = 1.5)
+points(beta.est, beta.true, col="darkblue")
 
 ## summary of all results
 ## (show all coefficients and sigma estimates)
@@ -155,15 +154,15 @@ out0 <- BridgeChangeReg(
     y = out$y.c, X = out$x.c, n.break = 0,
     scale.data=TRUE, intercept = TRUE,
     mcmc = mcmc, burn = burn, thin = thin, verbose = verbose,
-    alpha.MH = TRUE, Waic = TRUE, marginal = FALSE
+    alpha.MH = TRUE, waic = TRUE
 )
 
 set.seed(11173);
 out1 <- BridgeChangeReg(
     y = out$y.c, X = out$x.c, n.break = 1,
     scale.data = TRUE, intercept = TRUE,
-    mcmc = mcmc, burn = burn, thin=thin, verbose = verbose,
-    alpha.MH = TRUE, Waic=TRUE, marginal = FALSE
+    mcmc = mcmc, burn = burn, thin = thin, verbose = verbose,
+    alpha.MH = TRUE, waic = TRUE
 )
 
 

@@ -31,18 +31,19 @@ $$
 
 ## Change-point Case
 
-```r
-# ####################################
-# ## one change with no correlation
-# ####################################
 
-# set.seed(1973);
-# sim <- SparseChangeSim(ntime=100, predictor = 100, rho=0.0, constant.p = 0, sign.change.tune = 3,
-#                        positive.jump=FALSE, varying.p = 0.2, break.point = 0.5, dgp.only=TRUE)
-#
-# plot(1:length(sim$true.beta[1,]), sim$true.beta[1,], xlab="predictor", ylab="coefficients", ylim=range(sim$true.beta), type='n')
-# points(sim$true.beta[1,], col="red", pch="1", cex=1)
-# points(sim$true.beta[2,], col="blue", pch="2", cex=1)
+### One change with no correlation
+
+```{r}
+# simulate data 
+set.seed(1973);
+sim <- BridgeChangeSim(ntime=100, predictor = 100, rho=0.0, constant.p = 0, sign.change.tune = 3,
+                       positive.jump=FALSE, varying.p = 0.2, break.point = 0.5, dgp.only=TRUE)
+
+plot(1:length(sim$true.beta[1,]), sim$true.beta[1,], xlab="predictor", ylab="coefficients", ylim=range(sim$true.beta), type='n')
+points(sim$true.beta[1,], col="red", pch="1", cex=1)
+points(sim$true.beta[2,], col="blue", pch="2", cex=1)
+
 #
 # ## slope change
 # set.seed(11173);

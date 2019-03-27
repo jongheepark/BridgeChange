@@ -1,14 +1,14 @@
+
+
 #' Bridge Regression with Change-point
 #'
 #' Univariate response linear change-point model with Bridge prior.
-#'
-#' @param y
-#' Outcome vector.
+#' @name BridgeChangeReg
+#' @param y Outcome vector.
 #' @param X
 #' Design matrix. Columns correspond to variables.
 #' @param intercept
-#' If \code{TRUE}, estimate intercept by MLE.
-#' Default is \code{TRUE}.
+#' A boolean. If \code{TRUE}, estimate intercept by MLE. The estimated intercept is used to detect breaks.
 #' This option does not affect the result when \code{n.break = 0}.
 #' We recommend \code{intercept = TRUE} when the number of break is not zero.
 #' @param n.break
@@ -27,10 +27,8 @@
 #' Iterations at which the results are printed on the console. Default is every 100th iteration.
 #' @param thin
 #' Thinning for gibbs updates. Default is 1 (no thinning).
-#'
 #' @param reduce.mcmc The number of reduced MCMC iterations for marginal likelihood computations.
 #' If \code{reduce.mcmc = NULL}, \code{mcmc/thin} is used.
-
 #' @param c0
 #' Scale parameter for Gamma distribution. Used for the prior of \eqn{\sigma^2}.
 #' Default is 0.1.
@@ -70,39 +68,19 @@
 #' @param marginal
 #' If \code{TRUE}, the marginal likelihood is computed based on Chib's method.
 #' Default is \code{FALSE}.
+#'
 #' @return
 #' An mcmc object that contains the posterior sample of coefficients and variances as columns.
 #'  Rows correspond to mcmc samples. This object can be summarized by functions provided by the coda package.
 #'  The object contains an attribute \code{"intercept"} that stores mcmc samples for intercept and an attribute state storage matrix that contains posterior samples of hidden states.
 #'
-#' @rdname BridgeChangeReg
-#' @example examples/reg_eg.R
-#'
 #' @importFrom mvtnorm rmvnorm
 #' @importFrom copula retstable
 #' @importFrom coda as.mcmc
+#' @example examples/reg_eg.R
+#' @export
 #'
-#' @export
-BridgeChangeReg <- function(y, X, n.break = 0, ...)
-  UseMethod("BridgeChangeReg") # definition generic function
-
-
-# #' @rdname BridgeChangeReg
-# #' @export
-# BridgeChangeReg.formula <- function(formula, data, ...) {
-#   if (missing(data))  data <- environment(formula)
-#   mat <- f.formula(formula, data, all.categories = FALSE)
-#   y <- mat$Y
-#   x <- mat$X
-#   res <- BridgeChangeReg(y = y, X = X, x=x, z=z, intercept=intercept, homoscedastic=homoscedastic)
-#
-# }
-
-
-#' @rdname BridgeChangeReg
-#' @export
-BridgeChangeReg.default <- function(
-  y, X,                                             # inputs
+BridgeChangeReg <- function(y, X,                   # inputs
   n.break = 0,                                      # number of breaks
   scale.data = TRUE,  intercept = TRUE,             # data transformations
   mcmc = 100, burn = 100, verbose = 100, thin = 1,  # mcmc related args
@@ -112,7 +90,7 @@ BridgeChangeReg.default <- function(
   alpha.limit = FALSE, alpha.MH = TRUE,
   beta.start = NULL, beta.alg = "SVD",              # beta realted args
   waic = FALSE, marginal = FALSE                    # model selection args
-){
+) {
 
   ## ---------------------------------------------------- ##
   ##                preparing inputs                      ##
@@ -242,7 +220,7 @@ BridgeChangeReg.default <- function(
   ## ---------------------------------------------------- ##
   ## Estimate intercept for initialization                ##
   ## ---------------------------------------------------- ##
-  beta0 <- estimate_intercept_reg(y, Xorig, beta, n.break, intercept)
+  beta0 <- estimate_intercept_reg(y, Xorig, beta, n.break, intercept, state)
 
   ## ---------------------------------------------------- ##
   ## MCMC sampler starts here!
@@ -284,11 +262,7 @@ BridgeChangeReg.default <- function(
     ## ---------------------------------------------------- ##
     for (j in 1:ns){
       for(k in 1:K){
-        ## lambda[j, k] =  2*retstable_LD(0.5 * alpha[j], 1.0, beta[j, k]^2 / tau[j]^2)
-        ## lambda[j] = 2 * retstable.ld(0.5 * alpha, 1.0, beta[j]^2 / tau^2);
         lambda[j, k] =  2*retstable(0.5 * alpha[j], 1.0, beta[j, k]^2 / tau[j]^2, method="LD");
-        # lambda[j, k] =  2*retstable_LD(0.5 * alpha[j], 1.0, beta[j, k]^2 / tau[j]^2)
-        # cat("lambda = ", lambda[j,k], "\n")
       }
     }
 
@@ -360,7 +334,7 @@ BridgeChangeReg.default <- function(
     ## ---------------------------------------------------- ##
     ## Estimate intercept
     ## ---------------------------------------------------- ##
-    beta0 <- estimate_intercept_reg(y, Xorig, beta, n.break, intercept)
+    beta0 <- estimate_intercept_reg(y, Xorig, beta, n.break, intercept, state)
 
     ## ---------------------------------------------------- ##
     ## report and save
@@ -402,7 +376,7 @@ BridgeChangeReg.default <- function(
   mu.st.state <- X %*% t(beta.st)
   resid <- sapply(1:ntime, function(t){ydm[t] - c(mu.st.state[t, state[t]])})
 
-if(marginal){
+  if(marginal){
 
         ## ---------------------------------------------------- ##
         ## prepare
@@ -745,25 +719,25 @@ if(marginal){
     ## end.time = proc.time();
     runtime = (end.time - start.time)[1];
     Waic.out <- NULL
-  
+
   if (isTRUE(waic)){
     ## Waic computation
     Waic.out <- waic_calc(Z.loglike.array)$total
     rm(Z.loglike.array)
 
     if (verbose > 0) {
-      cat("\n----------------------------------------------",'\n')
+      cat("\n----------------------------------------------------\n")
       cat("WAIC: ", Waic.out[1], "\n")
       ## cat("lpd: ", Waic.out[3], "\n")
       ## cat("p_Waic: ", Waic.out[4], "\n")
-      cat("trun time: ", runtime, '\n')
-      cat("----------------------------------------------",'\n')
+      cat("Run time: ", runtime, '\n')
+      cat("----------------------------------------------------\n")
     }
   } else {
     if (verbose > 0) {
-      cat("\n----------------------------------------------",'\n')
-      cat("trun time: ", runtime, '\n')
-      cat("----------------------------------------------",'\n')
+      cat("\n----------------------------------------------------\n")
+      cat("Run time: ", runtime, '\n')
+      cat("----------------------------------------------------\n")
     }
 
   }
@@ -800,6 +774,7 @@ if(marginal){
     ps.holder <- matrix(ps.store, ntime, ns)
     s.holder  <- matrix(sdraws, nstore, ntime)
   }
+
 
   ## ---------------------------------------------------- ##
   ## OUTPUT

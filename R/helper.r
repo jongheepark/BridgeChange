@@ -201,9 +201,7 @@ centerdata <- function(X, all=TRUE){
     for(k in 1:K){
         if(!all){
             ## if binary data should be untouched
-            if(length(unique(X[,k])) == 2){
-                new.X[,k] <- X[,k]
-ㅇdr            }
+            if(length(unique(X[,k])) == 2){ new.X[,k] <- X[,k] }
         }
         new.X[,k] <- (X[,k] - col.mean[k]) ## /(col.sd[k])
     }
@@ -1282,7 +1280,15 @@ SLOG <- function(x, y, l, times = 1e-6, thresh = 1e-10, start=NULL){
 ## }
 
 
-estimate_intercept_reg <- function(y, Xorig, beta, n.break, intercept) {
+#' Function to update intercept 
+#' @param y outcome vector 
+#' @param Xorig design matrix in original scale 
+#' @param beta regression coefficient
+#' @param n.break number of breaks 
+#' @param intercept boolean; if \code{FALSE}, the intercept is set to zero.
+#' @param state state vector (length T)
+#' @keyword internal
+estimate_intercept_reg <- function(y, Xorig, beta, n.break, intercept, state) {
   ns <- n.break + 1
 
   if (n.break == 0 & intercept == TRUE) {

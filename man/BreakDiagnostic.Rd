@@ -4,8 +4,8 @@
 \alias{BreakDiagnostic}
 \title{Detect a break number using different metrics}
 \usage{
-BreakDiagnostic(y, X, mcmc = 100, burn = 100, verbose = 100, thin = 1,
-  break.upper = 3)
+BreakDiagnostic(y, X, mcmc = 100, burn = 100, verbose = 100,
+  thin = 1, break.upper = 3)
 }
 \arguments{
 \item{mcmc}{The number of MCMC iterations after burnin.}
