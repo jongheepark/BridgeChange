@@ -1,14 +1,24 @@
 ---
-title: "BridgeChange: Bayesian Change-point Analysis with High-dimensional Covariates"
-output: 
-  md_document:
-    variant: markdown_github
+output: github_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-require(BridngeChange)
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
 ```
+
+# BridgeChange
+
+`R` package `BridgeChange` constains functions useful to analyze time-series data 
+and panel data with possibly large number of covariates and change-points.
+This package offers a Bayesian inference on the linear regression mode under high-dimensinal covariates whose effects on the outcome are allowed to be heterogeneous across time.
+This package will be useful to discover a set of predictive variables under dynamic setting where time-varying effect is expected to exist in many cases.
 
 
 ## Table of Contents
@@ -16,15 +26,6 @@ require(BridngeChange)
 1. [Overview](#overview)
 2. [Installation](#installation)
 3. [Time-series Data](#time-series-data)
-3. [Panel Data](#panel-data)
-
-
-## Overview
-
-`R` package `BridgeChange` constains functions useful to analyze time-series data 
-and panel data with possibly large number of covariates and change-points.
-This package offers a Bayesian inference on the linear regression mode under high-dimensinal covariates whose effects on the outcome are allowed to be heterogeneous across time.
-This package will be useful to discover a set of predictive variables under dynamic setting where time-varying effect is expected to exist in many cases.
 
 
 
@@ -33,10 +34,8 @@ This package will be useful to discover a set of predictive variables under dyna
 You can install the most recent version of `BridgeChange` from Gitub using the [`devtools`](https://github.com/r-lib/devtools) package.
 
 ```r
-# install devtools if necessary
-install.packages("devtools")
-
 # install BridgeChange from Github
+# you might need to instal "devtools"
 devtools::install_github("soichiroy/BridgeChange")
 ```
 
@@ -55,9 +54,76 @@ $$
 where $s_{t} \in \{1, \ldots, M\}$ is an indicator of states.
 
 
+```{r, warning=FALSE,echo=FALSE,message=FALSE}
+# load packages 
+require(BridgeChange)
+```
+
 ### Example 
 
+```{r}
+set.seed(1973);
+
+##
+## simulate dataset 
+##
+
+out <- BridgeChangeSim(ntime=100, predictor = 50, rho=0.2, constant.p = 0.5,
+                       positive.jump=FALSE, varying.p = 0.2, break.point = 0.5, dgp.only=TRUE)
+
+# plot simulated coefficients 
+plot(1:length(out$true.beta[1,]), out$true.beta[1,], 
+     xlab="predictor", ylab="coefficients", ylim=range(out$true.beta), type='n')
+points(out$true.beta[1,], col="red", pch="1", cex=1)
+points(out$true.beta[2,], col="blue", pch="2", cex=1)
+
+# plot simulated data 
+plot(lm(y ~ x, data = out)$resid, type = 'l', lwd = 1.3)
+abline(v = 100/2, col = 'red', lty = 3, lwd = 1.5)
+```
+
+```{r}
+##
+## fit models 
+##
+
+# set mcmc parameters 
+mcmc <- burn <- 500; thin <- 1; verbose <- 500
+
+# fit no-break model
+set.seed(11173)
+out0 <- BridgeChangeReg(y=out$y, X=out$x, scale.data=TRUE, intercept=TRUE,
+                        mcmc=mcmc, burn = burn, thin=thin, verbose=verbose,
+                        alpha.MH=TRUE, n.break = 0, waic=TRUE)
+
+# fit one-break model 
+set.seed(11173)
+out1 <- BridgeChangeReg(y=out$y, X=out$x, scale.data=TRUE,intercept=TRUE,
+                        mcmc=mcmc, burn = burn, thin=thin, verbose=verbose,
+                        alpha.MH=TRUE, n.break = 1, waic=TRUE)
+
+# fit one-break model 
+set.seed(11173)
+out2 <- BridgeChangeReg(y=out$y, X=out$x, scale.data=TRUE,intercept=TRUE,
+                        mcmc=mcmc, burn = burn, thin=thin, verbose=verbose,
+                        alpha.MH=TRUE, n.break = 2, waic=TRUE)
+
+```
 
 
+```{r}
+##
+## Post-estimation 
+##
 
-## Panel Data 
+# model selection by waic 
+waic <- WaicCompare(list(out0, out1, out2), print = TRUE)
+
+
+# state transition plot (provided by `MCMCpack`)
+par(mfrow = c(1,2), mar = c(4, 2.5, 3.5, 1))
+MCMCpack::plotState(out1)
+MCMCpack::plotState(out2)
+```
+
+
