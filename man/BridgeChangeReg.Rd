@@ -171,9 +171,14 @@ out2 <- BridgeChangeReg(
     y=out$y.c, X=out$x.c, n.break = 2,
     scale.data = TRUE, intercept = TRUE,
     mcmc = mcmc, burn = burn, thin=thin, verbose=verbose,
-    alpha.MH = TRUE, Waic = TRUE, marginal = FALSE
+    alpha.MH = TRUE, waic = TRUE
 )
 
-WaicCompare(list(out0, out1, out2))
-# MarginalCompare(list(out0, out1))
+## model selection by WAIC
+waic <- WaicCompare(list(out0, out1, out2), print = TRUE)
+
+## plot state transitions 
+par(mfrow = c(1,2))
+MCMCpack::plotState(out1)
+MCMCpack::plotState(out2)
 }

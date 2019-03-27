@@ -22,3 +22,4 @@ estimate_intercept_reg(y, Xorig, beta, n.break, intercept, state)
 \description{
 Function to update intercept
 }
+\keyword{internal}

@@ -230,13 +230,25 @@ MSEcompare <- function(outlist){
     colnames(out) <- paste0("break ", breaks)
     return(out)
 }
-WaicCompare <- function(outlist){
+
+#' Compare Models based on WAIC 
+#' @param output list of \code{\link{BridgeChange}} objects, whch are typically outputs from \code{BridgeChangeReg}.
+#' @param print boolean; if \code{TRUE} selected model is printed.
+#' @return A vector of WAIC
+WaicCompare <- function(outlist, print = TRUE){
     N.model <- length(outlist)
     breaks <- lapply(outlist, attr, "m")
     outl <- lapply(outlist, attr, "Waic.out")
     outm <- matrix(unlist(outl), N.model, 8, byrow=TRUE)
     out <- matrix(outm[,1], 1, N.model)
     colnames(out) <- paste0("break ", breaks)
+    
+    if(isTRUE(print)) {
+      cat("\n")
+      cat("Selected model = break", unlist(breaks)[which.min(out[1,])],'\n')        
+      cat("\n")
+      print.default(out[1,], quote = FALSE, digit = 5)
+    }
     return(out)
 }
 MarginalCompare <- function(outlist){
@@ -1287,7 +1299,7 @@ SLOG <- function(x, y, l, times = 1e-6, thresh = 1e-10, start=NULL){
 #' @param n.break number of breaks 
 #' @param intercept boolean; if \code{FALSE}, the intercept is set to zero.
 #' @param state state vector (length T)
-#' @keyword internal
+#' @keywords internal
 estimate_intercept_reg <- function(y, Xorig, beta, n.break, intercept, state) {
   ns <- n.break + 1
 
