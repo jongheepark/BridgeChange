@@ -106,7 +106,7 @@ arma::mat draw_beta_svd_cpp(
             V0(arma::span(0, p-1), arma::span(0, n-1)) = V;
             d0(arma::span(0, n-1)) = arma::pow(d.t(), 2);
             d00(arma::span(0, n-1)) = d.t();
-          
+
             d0 += lambda.row(j) * sig2(j) / std::pow(tau(j), 2);
 
             Mu = V0 * arma::diagmat(1 / d0) * arma::diagmat(d00) * (U0.t() * Ym[j]);
@@ -276,28 +276,28 @@ arma::mat draw_beta_BCK_cpp(
     const int &ns,
     const int &K) {
 
-    
+
     arma::mat beta(ns, K);
-    
+
     for (int j = 0; j < ns; j++) {
         int n = Xm[j].n_rows;
-        
+
         // step 1
         arma::rowvec d = arma::sqrt(lambda.row(j) * sig2(j) / tau(j)); // check this part
-        arma::vec u(K); 
+        arma::vec u(K);
         arma::vec nn(n);
-        for (int p = 0; p < K; p++) u(p) = R::rnorm(0.0, d(p));        
+        for (int p = 0; p < K; p++) u(p) = R::rnorm(0.0, d(p));
         for (int i = 0; i < n; i++) nn(i) = R::rnorm(0.0, 1.0);
-        
+
         arma::vec v = Xm[j] * u + nn;
-        
+
         // step 2
-        arma::mat D  = arma::diagmat(pow(d, 2)); // not efficient 
-        arma::mat U  = D * Xm[j].t();        
+        arma::mat D  = arma::diagmat(pow(d, 2)); // not efficient
+        arma::mat U  = D * Xm[j].t();
         arma::mat In = arma::eye<arma::mat>(n,n);
         arma::vec v2 = arma::solve((Xm[j] * U + In), Ym[j]/sig2(j) - v);
-        beta.row(j) = arma::trans(u + U * v2); 
+        beta.row(j) = arma::trans(u + U * v2);
     }
-    
+
     return beta;
 }

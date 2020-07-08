@@ -5,6 +5,445 @@
 
 TRUNC = 0.64
 cutoff = 1 / TRUNC;
+
+r.square.sparse <- function(y, yhat, x, beta.sparse, s2){
+    N <- length(y)
+    nXB <-  sum(yhat^2)/N
+    y.sparse <- x%*%beta.sparse
+    numer <- nXB
+    denom <- nXB + s2 + sum((yhat - y.sparse)^2)/N
+    value <- numer/denom
+    return(value)
+}
+
+r.square.sparse.jhp <- function(y, yhat, x, beta.sparse){
+    yhat.sparse <- x%*%beta.sparse
+    rss <- sum((y - yhat.sparse)^2)  ## residual sum of squares
+    tss <- sum((y - yhat)^2)  ## total sum of squares
+    rsq <- 1 - rss/tss
+    return(rsq)
+}
+
+r.square.sparse.total <- function(y, yhat, yhat.sparse){
+    rss <- sum((y - yhat.sparse)^2)  ## residual sum of squares
+    tss <- sum((y - yhat)^2)  ## total sum of squares
+    rsq <- 1 - rss/tss
+    return(rsq)
+}
+
+## ==> we might need to extend this to more than two breaks
+dgp.break <- function(x, N = 10, T = 100, Q,
+                      true.beta,    # this should be a list
+                      true.sigma,   # this should be a list
+                      true.D,       # this should be a list
+                      break.point = 50, 
+                      break.sigma = 10, fixed=FALSE, 
+                      print=FALSE){
+    if(N > 1){
+        ## panel case
+        NT <- N*T
+        if(fixed){
+            X <- x
+        }else{
+            X <- cbind(1, x);
+        }
+        W <- X[,2:(Q+1), drop = FALSE]; 
+        y <- rep(NA, NT)
+        
+        id <-  rep(1:N, each=NT/N)
+        K  <-  ncol(X);   
+                                        # Q  <-  ncol(W)
+        
+        mu <- rep(break.point, N)
+        sigma <- rep(break.sigma, N)
+        ruler <- c(1:T)
+        ## compute the weight for the break
+        W.mat <- matrix(NA, T, N)
+        for (i in 1:N){
+            W.mat[, i] <- pnorm((ruler-mu[i])/sigma[i])
+        }
+        Weight <- as.vector(W.mat)
+        ## data generating by weighting two means and variances
+        if(fixed){
+            W.fixed <- rnorm(N, 0, 2)
+            j = 1
+            for (i in 1:N){
+                ni <- length(id[unique(id)==i]) 
+                Xi <- X[j:(j+ni-1), ]
+                ## Wi <- W[j:(j+ni-1), ]
+                true.V1 <- true.sigma[[1]]*diag(ni) ## + Wi%*%true.D[[1]]%*%t(Wi)
+                true.V2 <- true.sigma[[2]]*diag(ni) ## + Wi%*%true.D[[2]]%*%t(Wi)
+                true.mean1 <- Xi%*%true.beta[[1]]
+                true.mean2 <- Xi%*%true.beta[[2]]
+                weight <- Weight[j:(j+ni-1)]
+                y[j:(j+ni-1)] <- (1-weight)*true.mean1 + (1-weight)*chol(true.V1)%*%rnorm(T) +
+                    weight*true.mean2 + weight*chol(true.V2)%*%rnorm(T)  + rep(W.fixed[i], ni)
+                j <- j + ni
+            }
+            
+        }else{
+            j = 1
+            for (i in 1:N){
+                ni <- length(id[unique(id)==i]) 
+                Xi <- X[j:(j+ni-1), ]
+                Wi <- W[j:(j+ni-1), ]
+                true.V1 <- true.sigma[[1]]*diag(ni) + Wi%*%true.D[[1]]%*%t(Wi)
+                true.V2 <- true.sigma[[2]]*diag(ni) + Wi%*%true.D[[2]]%*%t(Wi)
+                true.mean1 <- Xi%*%true.beta[[1]]
+                true.mean2 <- Xi%*%true.beta[[2]]
+                weight <- Weight[j:(j+ni-1)]
+                y[j:(j+ni-1)] <- (1-weight)*true.mean1 + (1-weight)*chol(true.V1)%*%rnorm(T) +
+                    weight*true.mean2 + weight*chol(true.V2)%*%rnorm(T) 
+                j <- j + ni
+            }
+        }
+        if (print==TRUE){
+            par(mfrow=c(1,2))
+            plot(pnorm((ruler - break.point)/break.sigma))
+            plot((1- Weight[1:T])*true.beta1[2] + (Weight[1:T])*true.beta2[2])
+        }
+        
+        ## make id and inputs for HMMpack
+        subject.id <- c(rep(1:N, each=T))
+        time.id    <- c(rep(1:T, N))
+        time.dummy.mat <- matrix(NA, T, N)
+        ## time.dummy.mat is the categorical variable to do dummy variable regression
+        ## to get the correct beta 
+        for (i in 1:N){
+            for (t in 1:T){
+                time.dummy.mat[t, i] <- ifelse(t < mu[i], i, i+.5) 
+            }
+        }
+        time.dummy <- as.vector(time.dummy.mat)
+        subject.offset <- c(0, T*(1:(N-1)))
+        time.offset <-c(0, N*(1:(T-1)))
+        
+        out <- list(y, X, W, subject.id, time.id, time.dummy, subject.offset, time.offset)
+        names(out) <- c("y", "X", "W", "subject.id", "time.id",
+                        "time.dummy", "subject.offset", "time.offset")
+    }else{
+        ## univariate case
+        NT <- N*T
+        if(fixed){
+            X <- x
+        }else{
+            X <- cbind(1, x);
+        }
+        y <- rep(NA, NT)
+        K  <-  ncol(X);   
+        ruler <- c(1:T)
+        ## compute the weight for the state 2
+        weight <- pnorm((ruler-break.point)/break.sigma)
+        true.V1 <- true.sigma[[1]] ## + Wi%*%true.D[[1]]%*%t(Wi)
+        true.V2 <- true.sigma[[2]] ## + Wi%*%true.D[[2]]%*%t(Wi)
+        true.mean1 <- X%*%true.beta[[1]]
+        true.mean2 <- X%*%true.beta[[2]]
+        y <- (1-weight)*true.mean1 + (1-weight)*rnorm(T, 0, true.V1) +
+            weight*true.mean2 + weight*rnorm(T, 0, true.V2)
+        out <- list(y, X)
+        names(out) <- c("y", "X")
+    }
+        
+    return(out)
+}
+
+
+## hybrid test
+test.plot <- function(h1, h2, true.beta, R2){
+    ## title <- paste0("~/GitHub/bayesianbridge/paper/2019apolmethplot/hybrid", cl, ".pdf")
+    ## pdf(file = title, width=10, height=10, family="sans")
+    if(ncol(h1) == 1){
+        par(mfrow=c(1,2))
+        par (mar=c(3,4,2,1), mgp=c(2,.7,0), tck=-.01)
+        plot(true.beta[[1]], h1, xlab="Ground Truth (Regime 1)", ylab=expression(beta^(DSS)),
+             pch=19, col=addTrans("brown", 100), cex=2.5,
+             main=paste0("Pseudo R-squared = ", round(R2$R2.DSS[1],2), " and RMSE = ", round(sqrt(mean((true.beta[[1]] - h1)^2)), 2)));
+        abline(a=0, b=1, col="red", lty=3, lwd=.8)
+        abline(h=0, col="steelblue", lty=2, lwd=.8)
+        legend("bottomright", legend=c("estimation accuracy", "inferential parsimony"),
+               col= c("red", "steelblue"), lty=c(3,2), bty="n")
+
+        plot(true.beta[[1]], h2, xlab="Ground Truth (Regime 1)", ylab=expression(beta^(CP)),
+             pch=19, col=addTrans("brown", 100), cex=2.5,
+             main=paste0("Pseudo R-squared = ", round(R2$R2.CP[1],2), " and RMSE = ", round(sqrt(mean((true.beta[[1]] - h2)^2)), 2)));
+        abline(a=0, b=1, col="red", lty=3, lwd=.8)
+        abline(h=0, col="steelblue", lty=2, lwd=.8)
+        legend("bottomright", legend=c("estimation accuracy", "inferential parsimony"),
+               col= c("red", "steelblue"), lty=c(3,2), bty="n")
+    }else{
+        par(mfrow=c(2,2))
+        par (mar=c(3,4,2,1), mgp=c(2,.7,0), tck=-.01)
+        plot(true.beta[[1]], h1[,1], xlab="Ground Truth (Regime 1)", ylab=expression(beta^(DSS)),
+             pch=19, col=addTrans("brown", 100), cex=2.5,
+             main=paste0("Pseudo R-squared = ", round(R2$R2.DSS[1],2), " and RMSE = ", round(sqrt(mean((true.beta[[1]] - h1[,1])^2)), 2)));
+        abline(a=0, b=1, col="red", lty=3, lwd=.8)
+        abline(h=0, col="steelblue", lty=2, lwd=.8)
+        legend("bottomright", legend=c("estimation accuracy", "inferential parsimony"),
+               col= c("red", "steelblue"), lty=c(3,2), bty="n")
+        
+        plot(true.beta[[2]], h1[,2], xlab="Ground Truth (Regime 2)", ylab=expression(beta^(DSS)),
+             pch=19, col=addTrans("brown", 100), cex=2.5,
+             main=paste0("Pseudo R-squared = ", round(R2$R2.DSS[2], 2), " and RMSE = ", round(sqrt(mean((true.beta[[2]] - h1[,2])^2)), 2)));
+        abline(a=0, b=1, col="red", lty=3, lwd=.8)
+        abline(h=0, col="steelblue", lty=2, lwd=.8)
+        legend("bottomright", legend=c("estimation accuracy", "inferential parsimony"),
+               col= c("red", "steelblue"), lty=c(3,2), bty="n")
+        
+        plot(true.beta[[1]], h2[,1], xlab="Ground Truth (Regime 1)", ylab=expression(beta^(CP)),
+             pch=19, col=addTrans("brown", 100), cex=2.5,
+             main=paste0("Pseudo R-squared = ", round(R2$R2.CP[1],2), " and RMSE = ", round(sqrt(mean((true.beta[[1]] - h2[,1])^2)), 2)));
+        abline(a=0, b=1, col="red", lty=3, lwd=.8)
+        abline(h=0, col="steelblue", lty=2, lwd=.8)
+        legend("bottomright", legend=c("estimation accuracy", "inferential parsimony"),
+               col= c("red", "steelblue"), lty=c(3,2), bty="n")
+        
+        plot(true.beta[[2]], h2[,2], xlab="Ground Truth (Regime 2)", ylab=expression(beta^(CP)),
+             pch=19, col=addTrans("brown", 100), cex=2.5,
+             main=paste0("Pseudo R-squared = ", round(R2$R2.CP[2],2), " and RMSE = ", round(sqrt(mean((true.beta[[2]] - h2[,2])^2)), 2)));
+        abline(a=0, b=1, col="red", lty=3, lwd=.8)
+        abline(h=0, col="steelblue", lty=2, lwd=.8)
+        legend("bottomright", legend=c("estimation accuracy", "inferential parsimony"),
+           col= c("red", "steelblue"), lty=c(3,2), bty="n")
+        ## dev.off()
+    }
+}
+
+## For hybrid
+## Adaptive for each regime
+adaptive.lasso.olsweight <- function(y, x){
+    fit.ridge <- cv.glmnet(y = y, x = x, type.measure="mse",
+                           alpha=0, standardize = TRUE, family="gaussian")
+    w3 <- 1/abs(matrix(coef(fit.ridge, s=fit.ridge$lambda.min)[, 1][2:(ncol(x)+1)] )) ## Using gamma = 1
+    w3[w3[,1] == Inf] <- 999999999 ## Replacing values estimated as Infinite for 999999999   
+    cv.adaptive <- cv.glmnet(x=x, y=y, family='gaussian', alpha=1, penalty.factor=w3)
+    beta.adaptive <- coef(cv.adaptive, s = "lambda.min")[-1]
+    return(beta.adaptive)
+}
+
+## For hybrid using beta.hat as weights
+## Adaptive for each regime
+adaptive.lasso <- function(y1, x1, beta.hat){
+    ## fit.ridge <- cv.glmnet(y = y, x = x, type.measure="mse",
+    ##                        alpha=0, standardize = TRUE, family="gaussian")
+    w3 <- 1/abs(beta.hat) ## Using gamma = 1
+    cv.adaptive <- cv.glmnet(x=x1, y=y1, family='gaussian', alpha=1, penalty.factor=w3)
+    beta.adaptive <- coef(cv.adaptive, s = "lambda.min")[-1]
+    return(beta.adaptive)
+}
+
+## cross-validation
+adaptive.lasso2 <- function(y, x){
+    ridge1_cv <- cv.glmnet(x = x, y = y,
+                           type.measure = "mse",
+                           nfold = 10,
+                           alpha = 0)
+    best_ridge_coef <- as.numeric(coef(ridge1_cv, s = ridge1_cv$lambda.min))[-1]
+    alasso1_cv <- cv.glmnet(x = x, y = y,
+                            type.measure = "mse", nfold = 10,
+                            alpha = 1, 
+                            penalty.factor = 1 / abs(best_ridge_coef),
+                            keep = TRUE)
+    coef1 <- coef(alasso1_cv, s = alasso1_cv$lambda.min)[-1]
+    return(coef1)
+}
+
+
+## hybrid
+## location.bar is the x location of the legend starting
+## 
+dotplotRegime <- function(out, start, cex=1, x.location=c("random", "legend", "default"),
+                          order.state = 1, location.bar=9, text.cex=1, legend.position = "topright",
+                          select=NULL, main="", raw=FALSE){
+    state <- round(apply(attr(out, "s.store"), 2, mean))
+    unique.time.index <- start : (start + length(state) - 1)
+    if(raw){
+        coefs <- attr(out, "hybrid.raw")
+    }else{
+        coefs <- attr(out, "hybrid")
+    }
+    if(!is.null(select)){
+        coefs <- coefs[grep(select, rownames(coefs)),]
+    }
+    coef.mat <- matrix(NA, nrow=nrow(coefs), ncol=length(unique.time.index))
+    for(i in 1:nrow(coefs)){
+        coef.mat[i,] <- coefs[i, state]
+    }
+    require(colorspace)
+    col.scheme <- diverge_hcl(nrow(coefs), h=c(255, 330), l = c(40, 90))
+    col.scheme <- col.scheme[rank(coefs[, order.state])]
+    ## par (mar=c(3,3,2,4), mgp=c(2,.7,0), tck=-.01)
+    plot(unique.time.index, coef.mat[1,], xlab="time", ylab="coefficients", bty='n', main=main,
+         ylim=range(coefs), type="o", pch=19, cex=cex, col=addTrans(col.scheme[1], 100))
+    for(i in 2:nrow(coefs)){
+        points(unique.time.index, coef.mat[i,], pch=19, cex=cex, col=addTrans(col.scheme[i], 100))
+        lines(unique.time.index, coef.mat[i,], lwd=0.8, col=col.scheme[i])
+    }
+    ## grid(col="grey80")
+    if(x.location=="random"){
+        n.coef <- length(rownames(coefs))
+        x.location.pos <- sample((min(unique.time.index)+location.bar):(max(unique.time.index)-2), n.coef, replace=TRUE)
+        text(x = x.location.pos, coef.mat[, length(unique.time.index)], rownames(coefs), cex=text.cex, col=col.scheme, pos=3)
+    }else if(x.location=="legend"){
+        legend(legend.position, legend=rownames(coefs), col=addTrans(col.scheme, 100), pch=19, bty="n",
+               cex=0.8,lty=1:1, lwd=1, y.intersp = 0.8)
+    }else{
+        text(x = max(unique.time.index)-2, coef.mat[, length(unique.time.index)], rownames(coefs), col=col.scheme,
+             cex=text.cex, pos=3)
+    }
+    ## title("Regime-changing coefficients", adj = 0, line = 0)
+    box()
+}
+
+
+sim <- function(mcmc=1000, burn=1000, thin=1,
+                t_time= c(20, 40, 60), n_unit = c(10), 
+                k_cov = c(3,  5,  7), 
+                n_break  = c(1), 
+                s_sparse = c(1), hard.threshold = 0,
+                ## if hard.threshold > 0, abs(true.beta) < hard.threshold is set to be zero. 
+                no.panel=FALSE, ols.weight=FALSE,
+                intercept=FALSE, interaction=FALSE){
+    ## sim.out <- as.list(rep(NA, n.sim))
+    ## Random effect with interactions
+    
+    
+    sim_set <- expand.grid(n_unit, t_time, k_cov, n_break, s_sparse)
+    ## set simulation setting here
+    n.sim <- dim(sim_set)[1]
+    sim.out <- as.list(rep(NA, n.sim))
+
+    
+    for(cl in 1:n.sim){
+        ## set parameter
+        N <- sim_set[cl, 1] 
+        T <- sim_set[cl, 2] 
+        K <- sim_set[cl, 3] # note that this is the size of main terms (we add interactions too)
+        Q <- 1; #sim_set[cl, 3] 
+        B <- sim_set[cl, 4]  
+        S <- sim_set[cl, 5]
+        
+        ## generate data ==================
+        NT <- N * T; 
+        break.point <- T / 2;
+        break.sigma <- 1; 
+        ## generate covariates
+        x <- gen_cov(N, T, K)
+        ## prior setting
+        mu1 <- 1
+        mu2 <- -1
+        K_full <- ncol(x)
+        if (B == 1) {
+            true.beta1   <-  rnorm(K, mu1, 1)
+            true.beta2   <-  rnorm(K, mu2, 1)
+        } else {
+            true.beta1   <-  true.beta2 <- rnorm(K, mu1, 1)
+        }
+        ## generate coef for interactions
+        if (K <= 20) {
+            K_int <- ncol(x) - K
+            true_interaction <- gen_beta_int(K_int, mu = 1, pattern = S, n_break = B)
+            true.beta <- list(c(true.beta1, true_interaction[[1]]),
+                              c(true.beta2, true_interaction[[2]]))
+        } else {
+            true.beta <- list(true.beta1, true.beta2)
+            x <- x[,1:K]
+        }
+        if (B == 1) {
+            true.beta[[1]] <- ifelse(abs(true.beta[[1]]) < hard.threshold, 0, true.beta[[1]])
+            true.beta[[2]] <- ifelse(abs(true.beta[[2]]) < hard.threshold, 0, true.beta[[2]])
+        } else {
+            true.beta   <-  ifelse(abs(true.beta) < hard.threshold, 0, true.beta)
+        }
+        
+        
+        epsilon    <- abs(mu1 - mu2)
+        true.sigma <- list(1, 1);
+        true.D     <- list(diag(0, Q), diag(0, Q));
+        out <- dgp.break(x, 
+                         N = N, 
+                         T = T,
+                         Q = Q, 
+                         true.beta,
+                         true.sigma,
+                         true.D,
+                         break.point = break.point, 
+                         break.sigma = 1, 
+                         print = FALSE, fixed=TRUE
+                         )
+        
+        y <- out$y; X <- out$X;
+        if(N>1){
+            W <- out$W
+            subject.id <- out$subject.id; time.id <- out$time.id
+        }
+        plot(ts(y))
+        ## scale data =====================
+        ## y_demean <- y - mean(y)
+        ## X_scale  <- scale(X)
+        ## W_scale  <- scale(W)
+        b0  <- rep(0, ncol(x)); 
+        B0  <- diag(ncol(x))
+        c0  <- 0.1; 
+        d0  <- 0.1
+        r0  <- 5; 
+        R0  <- diag(Q);
+        
+        ## data <- data.frame(cbind(y_demean, X_scale, subject.id, time.id))
+        if(N>1){
+            data <- data.frame(cbind(y, X, subject.id, time.id))
+        }else{
+            data <- data.frame(cbind(y, X))
+        }
+        n <- names(data)
+        ## f <- as.formula(paste("y_demean ~", paste(n[!n %in% "y_demean" & !n %in% "time.id" & !n %in% "subject.id"], collapse = " + ")))
+        f <- as.formula(paste("y ~", paste(n[!n %in% "y" & !n %in% "time.id" & !n %in% "subject.id"], collapse = " + ")))
+        
+        ## lm(formula=f, data)
+        ## run simulation =================
+        ## sim_out <- pforeach(i = 1:n_chain, .cores = n_chain, .seed = 3821, .c = "list")({
+        ## pdata    <- pdata.frame(data, index = c("subject.id", "time.id"))
+        ## plm.out <- plm(formula=f, data=pdata, model = 'within', effect = 'individual')
+        if(N==1){
+            test0 <- BridgeChangeRegHybrid(y =y, X = X, n.break = B,
+                                           scale.data=TRUE, intercept = intercept, ols.weight=ols.weight,
+                                           mcmc = mcmc, burn = burn, thin = thin, verbose = 0, 
+                                           alpha.MH = TRUE, waic = FALSE, marginal = FALSE)
+            
+            
+        }else{
+            if(B==0){
+                test0 <- BridgeFixedPanelHybrid(formula=f, data=data, index = c("subject.id", "time.id"),  interaction = interaction, 
+                                                mcmc = mcmc, burn = burn, thin = thin, verbose = 0, standardize = FALSE, 
+                                                ols.weight=ols.weight, n.break = 0, model = 'within', effect = 'individual')
+                ## coef.hybrid <- attr(test0 , "hybrid")
+                ## plot(true.beta[[1]], coef.hybrid)
+                ## sqrt(sum((true.beta[[1]] - coef.hybrid)^2))
+                ## sqrt(sum((true.beta[[1]] - coef(plm.out))^2))
+            }else{
+                test0 <- BridgeFixedPanelHybrid(formula=f, data, index = c("subject.id", "time.id"),  interaction = interaction,
+                                                mcmc = mcmc, burn = burn, thin = thin, verbose = 0, standardize = FALSE, 
+                                                ols.weight=ols.weight, n.break = 1, model = 'within', effect = 'individual')
+                ## coef.hybrid <- attr(test0 , "hybrid.raw")
+                ## par(mfrow=c(1,2))
+                ## plot(true.beta[[1]], coef.hybrid[,1])
+                ## plot(true.beta[[2]], coef.hybrid[,2])
+            }
+        }
+        sim.out[[cl]] <- list(test0=test0, true.beta=true.beta)
+    }
+    attr(sim.out, "sim_set") <- sim_set
+    return(sim.out)
+}
+
+group.center <- function(df, group) {
+    variables <- colnames(df)
+    copydf <- df
+    for (i in 1:ncol(df)) {
+        copydf[,i] <- df[,i] - ave(df[,i], group, FUN=mean)}
+    colnames(copydf) <- variables
+    return(copydf)
+}
+
 ## Sample from PG(n, Z) using Devroye-like method.
 ## n is a natural number and z is a positive real.
 ##------------------------------------------------------------------------------
@@ -203,11 +642,13 @@ centerdata <- function(X, all=TRUE){
             ## if binary data should be untouched
             if(length(unique(X[,k])) == 2){
                 new.X[,k] <- X[,k]
-ㅇdr            }
+            }
         }
         new.X[,k] <- (X[,k] - col.mean[k]) ## /(col.sd[k])
     }
     return(new.X)
+    attr(output, "y.all")   <- y
+    attr(output, "X.all")   <- X
 }
 center <- function(x){
     out <- (x - mean(x, na.rm=TRUE))/sd(x, na.rm=TRUE)
@@ -249,41 +690,50 @@ MarginalCompare <- function(outlist){
     colnames(out) <- paste0("break ", breaks)
     return(out)
 }
+mse <- function(x, y=NULL){
+    if(is.null(y)){
+        sum((x-mean(x))^2)
+    }else{
+        sum((x-y)^2)
+    }
+}
 
 ## code by Gelman and Vehtari (2014)
 colVars <- function(a) {
-    n <- dim(a)[[1]]; c <- dim(a)[[2]];
-    return(.colMeans(((a - matrix(.colMeans(a, n, c), nrow = n, ncol =
-                                      c, byrow = TRUE)) ^ 2), n, c) * n / (n - 1))}
+  n <- dim(a)[[1]]; c <- dim(a)[[2]];
+  out <- .colMeans(((a - matrix(.colMeans(a, n, c),
+    nrow = n, ncol = c, byrow = TRUE)) ^ 2), n, c) * n / (n - 1)
+  return(out)
+}
 
-waic <- function(log_lik){
-    ## log_lik <- extract (stanfit, "log_lik")$log_lik
-    dim(log_lik) <- if (length(dim(log_lik))==1) c(length(log_lik),1) else
-    c(dim(log_lik)[1], prod(dim(log_lik)[2:length(dim(log_lik))]))
-    S <- nrow(log_lik)
-    n <- ncol(log_lik)
-    lpd <- log(colMeans(exp(log_lik)))
-    p_waic <- colVars(log_lik)
-    p_waic1 <- 2*(log(colMeans(exp(log_lik))) - colMeans(log_lik))
-    elpd_waic <- lpd - p_waic
-    waic <- -2*elpd_waic
-    waic2 <- -2*(lpd - p_waic1)
-    loo_weights_raw <- 1/exp(log_lik-max(log_lik))
-    loo_weights_normalized <- loo_weights_raw/
-        matrix(colMeans(loo_weights_raw),nrow=S,ncol=n,byrow=TRUE)
-    loo_weights_regularized <- pmin (loo_weights_normalized, sqrt(S))
-    elpd_loo <- log(colMeans(exp(log_lik)*loo_weights_regularized)/
-                        colMeans(loo_weights_regularized))
-    p_loo <- lpd - elpd_loo
-    pointwise <- cbind(waic,waic2, lpd,p_waic,p_waic1, elpd_waic,p_loo,elpd_loo)
-    total <- colSums(pointwise)
-    ## this is strange? SE = s/sqrt(n)
-    se <- sqrt(n*colVars(pointwise))
-    ## se <- sqrt(colVars(pointwise)/n)
-    waic.ci <- c(total[1] - 1.96*se[1], total[1] + 1.96*se[1])
-    return(list(waic=total["waic"], waic2=total["waic2"],  elpd_waic=total["elpd_waic"],
-                p_waic=total["p_waic"], p_waic1 = total["p_waic1"], elpd_loo=total["elpd_loo"], p_loo=total["p_loo"],
-                pointwise=pointwise, total=total, se=se, waic.ci=waic.ci))
+waic_calc <- function(log_lik){
+  ## log_lik <- extract (stanfit, "log_lik")$log_lik
+  dim(log_lik) <- if (length(dim(log_lik))==1) c(length(log_lik),1) else
+  c(dim(log_lik)[1], prod(dim(log_lik)[2:length(dim(log_lik))]))
+  S <- nrow(log_lik)
+  n <- ncol(log_lik)
+  lpd <- log(colMeans(exp(log_lik)))
+  p_waic <- colVars(log_lik)
+  p_waic1 <- 2*(log(colMeans(exp(log_lik))) - colMeans(log_lik))
+  elpd_waic <- lpd - p_waic
+  waic <- -2*elpd_waic
+  waic2 <- -2*(lpd - p_waic1)
+  loo_weights_raw <- 1/exp(log_lik-max(log_lik))
+  loo_weights_normalized <- loo_weights_raw/
+  matrix(colMeans(loo_weights_raw),nrow=S,ncol=n,byrow=TRUE)
+  loo_weights_regularized <- pmin (loo_weights_normalized, sqrt(S))
+  elpd_loo <- log(colMeans(exp(log_lik)*loo_weights_regularized)/
+  colMeans(loo_weights_regularized))
+  p_loo <- lpd - elpd_loo
+  pointwise <- cbind(waic,waic2, lpd,p_waic,p_waic1, elpd_waic,p_loo,elpd_loo)
+  total <- colSums(pointwise)
+  ## this is strange? SE = s/sqrt(n)
+  se <- sqrt(n*colVars(pointwise))
+  ## se <- sqrt(colVars(pointwise)/n)
+  waic.ci <- c(total[1] - 1.96*se[1], total[1] + 1.96*se[1])
+  return(list(waic=total["waic"], waic2=total["waic2"],  elpd_waic=total["elpd_waic"],
+  p_waic=total["p_waic"], p_waic1 = total["p_waic1"], elpd_loo=total["elpd_loo"], p_loo=total["p_loo"],
+  pointwise=pointwise, total=total, se=se, waic.ci=waic.ci))
 }
 #
 
@@ -1278,3 +1728,29 @@ SLOG <- function(x, y, l, times = 1e-6, thresh = 1e-10, start=NULL){
 
 ##   drop(out)
 ## }
+
+
+estimate_intercept_reg <- function(y, Xorig, beta, n.break, intercept, state) {
+  ns <- n.break + 1
+
+  if (n.break == 0 & intercept == TRUE) {
+    ## fit intercept
+    beta0 <- mean(y) - as.vector(colMeans(Xorig) %*% t(beta))
+    ## cat("beta0 = ", beta0, "\n")
+  } else if (n.break == 0 & intercept == FALSE) {
+      beta0 <- 0.0
+  }else if (n.break > 0 & intercept == TRUE) {
+      beta0 <- matrix(NA, nrow = ns, ncol = 1)
+                                        # ydm   <- as.vector(as.vector(y) - tapply(y, state, mean)[state])
+      for (j in 1:ns) {
+          beta0[j,] <- mean(y[state == j]) - colMeans(Xorig[state == j, , drop = FALSE]) %*% beta[j,]
+      }
+  } else if (n.break > 0 & intercept == FALSE) {
+      beta0 <- matrix(0, nrow = ns, ncol = 1)
+                                        # ydm   <- as.vector(as.vector(y) - tapply(y, state, mean)[state])
+  }
+  else{
+      beta0 <- 0.0
+  }
+  return(beta0)
+}

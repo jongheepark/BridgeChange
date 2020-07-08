@@ -14,7 +14,6 @@ In addition to the Gaussian linear models, count and binary outcomes are support
 Specifically, this package offers the following functions:
 \itemize{
   \item \code{\link{BridgeChangeReg}}: Univariate Regression with Change-points.
-  \item \code{\link{BridgeMixedPanel}}: Mixed Effect Panel Regression with Change-points.
   \item \code{\link{BridgeFixedPanel}}: Fixed Effect Panel Regression with Change-points.
 }
 }

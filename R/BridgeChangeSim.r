@@ -466,7 +466,7 @@ BridgeChangeSim <- function(ntime=500, predictor = 100, rho=0, time.series=FALSE
     #                 gp = gp, detected = model.names[which.min(model.test)])
     # }else{
         out <- list(y=y, x=x, y.c=y.c, x.c=x.c, y.sd = y.sd, X.sd = X.sd,
-                    true.beta = true.beta,
+                    true.beta = beta.true,
                     y.test.c=y.test.c, x.test.c=x.test.c,
                     y.train.c=y.train.c, x.train.c=x.train.c)
     # }

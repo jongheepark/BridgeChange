@@ -1,0 +1,63 @@
+---
+title: "BridgeChange: Bayesian Change-point Analysis with High-dimensional Covariates"
+output: 
+  md_document:
+    variant: markdown_github
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(BridngeChange)
+```
+
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Installation](#installation)
+3. [Time-series Data](#time-series-data)
+3. [Panel Data](#panel-data)
+
+
+## Overview
+
+`R` package `BridgeChange` constains functions useful to analyze time-series data 
+and panel data with possibly large number of covariates and change-points.
+This package offers a Bayesian inference on the linear regression mode under high-dimensinal covariates whose effects on the outcome are allowed to be heterogeneous across time.
+This package will be useful to discover a set of predictive variables under dynamic setting where time-varying effect is expected to exist in many cases.
+
+
+
+## Installation
+
+You can install the most recent version of `BridgeChange` from Gitub using the [`devtools`](https://github.com/r-lib/devtools) package.
+
+```r
+# install devtools if necessary
+install.packages("devtools")
+
+# install BridgeChange from Github
+devtools::install_github("soichiroy/BridgeChange")
+```
+
+
+
+## Time-series Data
+
+### Model
+
+`BridgeChangeReg()` can be used to analyse time-series data with possible change-points.
+
+The functions fits the linear model:
+$$
+y_{t} = \mathbf{X}^{\top}_{t}\beta_{s_{t}} + \epsilon_{t}
+$$
+where $s_{t} \in \{1, \ldots, M\}$ is an indicator of states.
+
+
+### Example 
+
+
+
+
+## Panel Data 

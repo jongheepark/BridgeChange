@@ -58,7 +58,7 @@ BridgeMixedPanel <- function(
     subject.id,
     time.id,
     standardize = TRUE,
-    n.break = 1, ## intercept=FALSE, 
+    n.break = 1,
     mcmc=100, burn=100, verbose=100, thin = 1,
     b0, B0, c0 = 0.1, d0 = 0.1, r0, R0, a = NULL, b = NULL,
     nu.shape=2.0, nu.rate=2.0, alpha = 1, alpha.MH = FALSE,
@@ -73,7 +73,6 @@ BridgeMixedPanel <- function(
     m  <- n.break;
     ns <- m + 1
     NT <-  length(y)
-    X <- Xorig  <- as.matrix(X);
     K  <-  ncol(X)
     Q  <-  ncol(W)
     N  <- length(unique(subject.id))  # number of subject
@@ -181,13 +180,7 @@ BridgeMixedPanel <- function(
     ## ---------------------------------------------------- ##
     ## Initialize.
     ## ---------------------------------------------------- ##
-    if(dim(X)[2] < dim(Y)[1]){
-        ols    <-  lm(y ~ X-1)
-        sig2  <- rep(summary(ols)$sigma, ns)^2 
-    } else{
-        sig2 <- rep(sigma2start, ns)
-    }
-
+    ols    <-  lm(y ~ X-1)
     lambda <- rmvnorm(ns, rep(1, K));
     tau    <- rep(1, ns);
     alpha  <- rep(alpha[1], ns);
@@ -200,7 +193,12 @@ BridgeMixedPanel <- function(
         beta <- matrix(beta_slog, nrow = ns, ncol = length(beta_slog))
     }
 
-   
+    if (is.na(sigma2.start[1])) {
+        sig2  <- rep(summary(ols)$sigma, ns)^2
+    } else{
+        sig2 <- rep(sigma2start, ns)
+    }
+
     ## ---------------------------------------------------- ##
     # initialize saving matrix
     ## ---------------------------------------------------- ##
@@ -209,7 +207,7 @@ BridgeMixedPanel <- function(
     taudraws    <- matrix(data=0, nstore, ns)
     betadraws   <- matrix(data=0, nstore, ns*K)
     lambdadraws <- matrix(data=0, nstore, ns*K)
-    sigmadraws  <- beta0draws <- matrix(data=0, nstore, ns)
+    sigmadraws  <- matrix(data=0, nstore, ns)
     if(!fixed){
         Ddraws <- matrix(data=0, nstore, ns*Q*Q)
     }
@@ -299,7 +297,6 @@ BridgeMixedPanel <- function(
                     XVX[[j]] <- XVX[[j]] + crossprod(Xt_arr[[tt]])
                     XVy[[j]] <- XVy[[j]] + t(Xt_arr[[tt]])%*%Yt_arr[[tt]]
                 }
-                ## XVX[[j]] <- cbind(1, XVX[[j]])
             }
             for (i in 1:N){
                 for (j in 1:ns){
@@ -390,7 +387,7 @@ BridgeMixedPanel <- function(
         ## Step 6: beta (change)
         ## ---------------------------------------------------- ##
         beta <- draw_beta_svd_cpp(XVX, XVy, lambda, sig2, tau, ns, K)
-        
+
         ## ---------------------------------------------------- ##
         ## Step 7: alpha (no change)
         ## ---------------------------------------------------- ##
@@ -406,15 +403,9 @@ BridgeMixedPanel <- function(
         }
 
         ## ---------------------------------------------------- ##
-        ## Estimate intercept
-        ## ---------------------------------------------------- ##
-        beta0 <- estimate_intercept_reg(y, Xorig, beta, n.break, intercept, state)
-
-
-        ## ---------------------------------------------------- ##
         ## Step 8: sampling S (change)
         ## ---------------------------------------------------- ##
-        if (n.break > 0) {      
+        if (n.break > 0) {
             ## tau, alpha, lambda are all marginalized out in likelihood!
             ## state.out <- sparse.panel.state.sampler(m=m, T=T, N=N,  Yt_arr=Yt_arr, Xt_arr=Xt_arr,
             ##                                         Wt_arr=Wt_arr, beta=beta, bi=bi, sig2=sig2, D=D, P=P)
@@ -457,13 +448,8 @@ BridgeMixedPanel <- function(
         ## ---------------------------------------------------- ##
         ## report
         ## ---------------------------------------------------- ##
-        if (verbose != 0 & iter %% verbose == 0){
-            cat(sprintf("\r Estimating parameters. Now at %i of %i", iter, totiter))
-            flush.console()
-        }
-
         if (verbose!= 0 &iter %% verbose == 0){
-            cat("\n----------------------------------------------",'\n')
+            cat("----------------------------------------------",'\n')
             cat("## iteration = ", iter, '\n')
             cat("----------------------------------------------",'\n')
             if (n.break > 0) {
@@ -489,7 +475,6 @@ BridgeMixedPanel <- function(
         if (iter > burn && (iter %% thin == 0)) {
             alphadraws[(iter-burn)/thin,]  <- alpha
             betadraws[(iter-burn)/thin,]   <- t(beta)
-            beta0draws[(iter-burn)/thin,]  <- as.vector(beta0)
             lambdadraws[(iter-burn)/thin,] <- t(lambda)
             sigmadraws[(iter-burn)/thin,]  <- sig2
             taudraws[(iter-burn)/thin,]    <- tau
@@ -1140,7 +1125,7 @@ BridgeMixedPanel <- function(
     Waic.out <- NULL
     if(Waic == TRUE){
         ## Waic computation
-        Waic.out <- waic_calc(Z.loglike.array)$total
+        Waic.out <- waic(Z.loglike.array)$total
         rm(Z.loglike.array)
 
         cat("\n----------------------------------------------",'\n')
@@ -1223,7 +1208,6 @@ BridgeMixedPanel <- function(
     attr(output, "y.all")   <- y
     attr(output, "X.all")   <- X
     attr(output, "m")       <- m
-    attr(output, "intercept") <- coda::mcmc(beta0draws,start=burn+1, end=burn + mcmc, thin=thin)
     attr(output, "nsubj")   <- nsubj
     attr(output, "ntime")   <- ntime
     attr(output, "alpha")   <- coda::mcmc(data=alphadraws, start=burn+1, end=burn + mcmc, thin=thin)
