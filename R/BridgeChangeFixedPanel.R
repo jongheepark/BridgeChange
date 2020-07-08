@@ -27,7 +27,8 @@
 #'
 #'
 #' @author Jong Hee Park, and Soichiro Yamauchi \email{syamauchi@princeton.edu}
-#'
+#' @importFrom plm pmodel.response
+#' @importFrom utils getFromNamespace
 #' @export
 BridgeFixedPanel <- function(formula, data, index, model, effect,
                              standardize = TRUE, inter = FALSE, 
@@ -38,6 +39,10 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
                              Waic = FALSE, marginal = FALSE) {
     call <- match.call()
     a = NULL; b = NULL
+    
+    ## @importMethodsFrom does not work 
+    model.matrix <- getFromNamespace("model.matrix.pFormula", "plm")
+    
     ## ---------------------------------------------------- ##
     ## use plm package here
     ## transform data int pdata.frame object
@@ -55,8 +60,8 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
     # X <- plm:::model.matrix.pFormula(formula, pdata, rhs = 1, model = model, effect = effect)
     # y <- plm:::pmodel.response.pFormula(formula, pdata, model = model, effect = effect)
 
-    X <- plm:::model.matrix.pFormula(pformula, pdata, rhs = 1, model = model, effect = effect)
-    y <- plm:::pmodel.response(pformula, pdata, model = model, effect = effect)
+    X <- model.matrix(pformula, pdata, rhs = 1, model = model, effect = effect)
+    y <- pmodel.response(pformula, pdata, model = model, effect = effect)
 
     ##
     ## centering X and Y?

@@ -640,9 +640,13 @@ centerdata <- function(X, all=TRUE){
     for(k in 1:K){
         if(!all){
             ## if binary data should be untouched
+<<<<<<< HEAD
             if(length(unique(X[,k])) == 2){
                 new.X[,k] <- X[,k]
             }
+=======
+            if(length(unique(X[,k])) == 2){ new.X[,k] <- X[,k] }
+>>>>>>> 9261927a984f545cb28f0202fdd59a6805067ac4
         }
         new.X[,k] <- (X[,k] - col.mean[k]) ## /(col.sd[k])
     }
@@ -673,13 +677,25 @@ MSEcompare <- function(outlist){
     colnames(out) <- paste0("break ", breaks)
     return(out)
 }
-WaicCompare <- function(outlist){
+
+#' Compare Models based on WAIC 
+#' @param output list of \code{\link{BridgeChange}} objects, whch are typically outputs from \code{BridgeChangeReg}.
+#' @param print boolean; if \code{TRUE} selected model is printed.
+#' @return A vector of WAIC
+WaicCompare <- function(outlist, print = TRUE){
     N.model <- length(outlist)
     breaks <- lapply(outlist, attr, "m")
     outl <- lapply(outlist, attr, "Waic.out")
     outm <- matrix(unlist(outl), N.model, 8, byrow=TRUE)
     out <- matrix(outm[,1], 1, N.model)
     colnames(out) <- paste0("break ", breaks)
+    
+    if(isTRUE(print)) {
+      cat("\n")
+      cat("Selected model = break", unlist(breaks)[which.min(out[1,])],'\n')        
+      cat("\n")
+      print.default(out[1,], quote = FALSE, digit = 5)
+    }
     return(out)
 }
 MarginalCompare <- function(outlist){
@@ -1730,12 +1746,24 @@ SLOG <- function(x, y, l, times = 1e-6, thresh = 1e-10, start=NULL){
 ## }
 
 
+<<<<<<< HEAD
+=======
+#' Function to update intercept 
+#' @param y outcome vector 
+#' @param Xorig design matrix in original scale 
+#' @param beta regression coefficient
+#' @param n.break number of breaks 
+#' @param intercept boolean; if \code{FALSE}, the intercept is set to zero.
+#' @param state state vector (length T)
+#' @keywords internal
+>>>>>>> 9261927a984f545cb28f0202fdd59a6805067ac4
 estimate_intercept_reg <- function(y, Xorig, beta, n.break, intercept, state) {
   ns <- n.break + 1
 
   if (n.break == 0 & intercept == TRUE) {
     ## fit intercept
     beta0 <- mean(y) - as.vector(colMeans(Xorig) %*% t(beta))
+<<<<<<< HEAD
     ## cat("beta0 = ", beta0, "\n")
   } else if (n.break == 0 & intercept == FALSE) {
       beta0 <- 0.0
@@ -1751,6 +1779,18 @@ estimate_intercept_reg <- function(y, Xorig, beta, n.break, intercept, state) {
   }
   else{
       beta0 <- 0.0
+=======
+    # cat("beta0 = ", beta0, "\n")
+  } else if (n.break > 0 & intercept == TRUE) {
+    beta0 <- matrix(NA, nrow = ns, ncol = 1)
+    # ydm   <- as.vector(as.vector(y) - tapply(y, state, mean)[state])
+    for (j in 1:ns) {
+      beta0[j,] <- mean(y[state == j]) - colMeans(Xorig[state == j, , drop = FALSE]) %*% beta[j,]
+    }
+  } else if (intercept == FALSE) {
+    beta0 <- matrix(0, nrow = ns, ncol = 1)
+    # ydm   <- as.vector(as.vector(y) - tapply(y, state, mean)[state])
+>>>>>>> 9261927a984f545cb28f0202fdd59a6805067ac4
   }
   return(beta0)
 }

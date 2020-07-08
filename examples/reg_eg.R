@@ -1,17 +1,20 @@
 ####################################
 ## no change
 ####################################
+
 set.seed(1999)
-mcmc = burn = 100; thin=1; verbose=100;
 
 ## simulate data
 K <- 100
 n <- 100
 X <- matrix(rnorm(n*K), n, K)
-sig2 <- .2
+sig2 <- 0.2
 beta.true <- matrix(rnorm(K), K, 1)*5
 beta.true[sample(1:K, K/2, replace=FALSE)] <- 0
 Y <- X%*%beta.true + rnorm(n, 0, sqrt(sig2))
+
+## global parameter for estimation 
+mcmc <- burn <- 100; thin <- 1; verbose <- 100;
 
 
 ## fit the model
@@ -26,9 +29,9 @@ beta.est <- coef(out0)
 
 ## plot
 plot(beta.est, beta.true, ylab="TRUE", xlab="EST", type = "n",
-       xlim = range(beta.est), ylim = range(beta.true))
-points(beta.est, beta.true, col="blue")
-abline(a=0, b=1, col="red")
+       xlim = range(beta.est), ylim = range(beta.true), asp = 1)
+abline(a=0, b=1, col="red", lty = 3, lwd = 1.5)
+points(beta.est, beta.true, col="darkblue")
 
 ## summary of all results
 ## (show all coefficients and sigma estimates)
@@ -62,15 +65,15 @@ out0 <- BridgeChangeReg(
     y = out$y.c, X = out$x.c, n.break = 0,
     scale.data=TRUE, intercept = TRUE,
     mcmc = mcmc, burn = burn, thin = thin, verbose = verbose,
-    alpha.MH = TRUE, Waic = TRUE, marginal = FALSE
+    alpha.MH = TRUE, waic = TRUE
 )
 
 set.seed(11173);
 out1 <- BridgeChangeReg(
     y = out$y.c, X = out$x.c, n.break = 1,
     scale.data = TRUE, intercept = TRUE,
-    mcmc = mcmc, burn = burn, thin=thin, verbose = verbose,
-    alpha.MH = TRUE, Waic=TRUE, marginal = FALSE
+    mcmc = mcmc, burn = burn, thin = thin, verbose = verbose,
+    alpha.MH = TRUE, waic = TRUE
 )
 
 
@@ -79,8 +82,13 @@ out2 <- BridgeChangeReg(
     y=out$y.c, X=out$x.c, n.break = 2,
     scale.data = TRUE, intercept = TRUE,
     mcmc = mcmc, burn = burn, thin=thin, verbose=verbose,
-    alpha.MH = TRUE, Waic = TRUE, marginal = FALSE
+    alpha.MH = TRUE, waic = TRUE
 )
 
-WaicCompare(list(out0, out1, out2))
-# MarginalCompare(list(out0, out1))
+## model selection by WAIC
+waic <- WaicCompare(list(out0, out1, out2), print = TRUE)
+
+## plot state transitions 
+par(mfrow = c(1,2))
+MCMCpack::plotState(out1)
+MCMCpack::plotState(out2)
