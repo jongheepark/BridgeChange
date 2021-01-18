@@ -1125,7 +1125,7 @@ BridgeMixedPanel <- function(
     Waic.out <- NULL
     if(Waic == TRUE){
         ## Waic computation
-        Waic.out <- waic(Z.loglike.array)$total
+        Waic.out <- waic_calc(Z.loglike.array)$total
         rm(Z.loglike.array)
 
         cat("\n----------------------------------------------",'\n')
