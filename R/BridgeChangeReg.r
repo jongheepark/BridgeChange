@@ -372,10 +372,10 @@ BridgeChangeReg <- function(y, X,                   # inputs
   ## ---------------------------------------------------- ##
 
   ## compute residual
-  beta.st   <- matrix(apply(betadraws, 2, mean), ns, K, byrow=TRUE)
-  mu.st.state <- X %*% t(beta.st)
-  resid <- sapply(1:ntime, function(t){ydm[t] - c(mu.st.state[t, state[t]])})
-
+    beta.st   <- matrix(apply(betadraws, 2, mean), ns, K, byrow=TRUE)
+    mu.st.state <- X %*% t(beta.st)
+    resid <- sapply(1:ntime, function(t){ydm[t] - c(mu.st.state[t, state[t]])})
+    Waic.out <- NULL
   if(marginal){
 
         ## ---------------------------------------------------- ##
@@ -391,21 +391,14 @@ BridgeChangeReg <- function(y, X,                   # inputs
             P.st <- apply(Pmat, 2, mean)
         }
 
-<<<<<<< HEAD
-    ## compute residual
-    beta.st   <- matrix(apply(betadraws, 2, mean), ns, K, byrow=TRUE)
-    mu.st.state <- X %*% t(beta.st)
-    resid <- sapply(1:ntime, function(t){ydm[t] - c(mu.st.state[t, state[t]])})
-    Waic.out <- NULL
-=======
-        ## ---------------------------------------------------- ##
-        ## Likelihood computation
-        ## ---------------------------------------------------- ##
-        loglike.t <- sapply(1:ntime, function(t){dnorm(ydm[t],
-                                                       mean = c(mu.st.state[t, state.st[t]]),
-                                                       sd=sqrt(sig2.st[state.st[t]]), log=TRUE)})
-        loglike <- sum(loglike.t)
-
+      ## ---------------------------------------------------- ##
+      ## Likelihood computation
+      ## ---------------------------------------------------- ##
+      loglike.t <- sapply(1:ntime, function(t){dnorm(ydm[t],
+                                                     mean = c(mu.st.state[t, state.st[t]]),
+                                                     sd=sqrt(sig2.st[state.st[t]]), log=TRUE)})
+      loglike <- sum(loglike.t)
+      
         cat("\n---------------------------------------------- \n ")
         cat("Likelihood computation \n")
         cat("    loglike: ", as.numeric(loglike), "\n")
