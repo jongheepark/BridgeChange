@@ -29,7 +29,9 @@
 #' @author Jong Hee Park, and Soichiro Yamauchi \email{syamauchi@princeton.edu}
 #' @importFrom plm pmodel.response
 #' @importFrom utils getFromNamespace
+#' 
 #' @export
+#' 
 BridgeFixedPanel <- function(formula, data, index, model, effect,
                              standardize = TRUE, inter = FALSE, 
                              n.break = 1, 

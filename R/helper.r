@@ -640,13 +640,9 @@ centerdata <- function(X, all=TRUE){
     for(k in 1:K){
         if(!all){
             ## if binary data should be untouched
-<<<<<<< HEAD
             if(length(unique(X[,k])) == 2){
                 new.X[,k] <- X[,k]
             }
-=======
-            if(length(unique(X[,k])) == 2){ new.X[,k] <- X[,k] }
->>>>>>> 9261927a984f545cb28f0202fdd59a6805067ac4
         }
         new.X[,k] <- (X[,k] - col.mean[k]) ## /(col.sd[k])
     }
@@ -1745,9 +1741,6 @@ SLOG <- function(x, y, l, times = 1e-6, thresh = 1e-10, start=NULL){
 ##   drop(out)
 ## }
 
-
-<<<<<<< HEAD
-=======
 #' Function to update intercept 
 #' @param y outcome vector 
 #' @param Xorig design matrix in original scale 
@@ -1756,41 +1749,24 @@ SLOG <- function(x, y, l, times = 1e-6, thresh = 1e-10, start=NULL){
 #' @param intercept boolean; if \code{FALSE}, the intercept is set to zero.
 #' @param state state vector (length T)
 #' @keywords internal
->>>>>>> 9261927a984f545cb28f0202fdd59a6805067ac4
 estimate_intercept_reg <- function(y, Xorig, beta, n.break, intercept, state) {
   ns <- n.break + 1
 
   if (n.break == 0 & intercept == TRUE) {
     ## fit intercept
     beta0 <- mean(y) - as.vector(colMeans(Xorig) %*% t(beta))
-<<<<<<< HEAD
     ## cat("beta0 = ", beta0, "\n")
   } else if (n.break == 0 & intercept == FALSE) {
       beta0 <- 0.0
-  }else if (n.break > 0 & intercept == TRUE) {
+  } else if (n.break > 0 & intercept == TRUE) {
       beta0 <- matrix(NA, nrow = ns, ncol = 1)
                                         # ydm   <- as.vector(as.vector(y) - tapply(y, state, mean)[state])
       for (j in 1:ns) {
           beta0[j,] <- mean(y[state == j]) - colMeans(Xorig[state == j, , drop = FALSE]) %*% beta[j,]
       }
-  } else if (n.break > 0 & intercept == FALSE) {
+  }else if (n.break > 0 & intercept == FALSE) {
       beta0 <- matrix(0, nrow = ns, ncol = 1)
                                         # ydm   <- as.vector(as.vector(y) - tapply(y, state, mean)[state])
-  }
-  else{
-      beta0 <- 0.0
-=======
-    # cat("beta0 = ", beta0, "\n")
-  } else if (n.break > 0 & intercept == TRUE) {
-    beta0 <- matrix(NA, nrow = ns, ncol = 1)
-    # ydm   <- as.vector(as.vector(y) - tapply(y, state, mean)[state])
-    for (j in 1:ns) {
-      beta0[j,] <- mean(y[state == j]) - colMeans(Xorig[state == j, , drop = FALSE]) %*% beta[j,]
-    }
-  } else if (intercept == FALSE) {
-    beta0 <- matrix(0, nrow = ns, ncol = 1)
-    # ydm   <- as.vector(as.vector(y) - tapply(y, state, mean)[state])
->>>>>>> 9261927a984f545cb28f0202fdd59a6805067ac4
   }
   return(beta0)
 }

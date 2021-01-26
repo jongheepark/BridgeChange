@@ -4,12 +4,31 @@
 \alias{BridgeFixedPanelHybrid}
 \title{Hybrid Approach to Bridge Change Point Model with Fixed Effect}
 \usage{
-BridgeFixedPanelHybrid(formula, data, index, model, effect,
-  standardize = TRUE, interaction = FALSE, n.break = 1,
-  ols.weight = FALSE, sparse.only = FALSE, mcmc = 100, burn = 100,
-  verbose = 100, thin = 1, b0 = 0, B0 = 1, c0 = 0.1, d0 = 0.1,
-  r0 = 1, R0 = 1, nu.shape = 2, nu.rate = 2, alpha = 1,
-  Waic = FALSE, marginal = FALSE)
+BridgeFixedPanelHybrid(
+  formula,
+  data,
+  index,
+  model,
+  effect,
+  standardize = TRUE,
+  inter = FALSE,
+  n.break = 1,
+  mcmc = 100,
+  burn = 100,
+  verbose = 100,
+  thin = 1,
+  b0 = 0,
+  B0 = 1,
+  c0 = 0.1,
+  d0 = 0.1,
+  r0 = 1,
+  R0 = 1,
+  nu.shape = 2,
+  nu.rate = 2,
+  alpha = 1,
+  Waic = FALSE,
+  marginal = FALSE
+)
 }
 \arguments{
 \item{data}{Data.frame object.}
@@ -21,14 +40,10 @@ For example, \code{index = c("unit", "year")}.}
 
 \item{effect}{Effect (\code{c("individual", "time", "twoways")}).}
 
-\item{interaction}{If TRUE, all pairwise interactions are added.}
+\item{standardize}{If TRUE, all covariates are standardized.}
 
 \item{n.break}{Number of breaks.
 If \code{n.break = 0}, it simply runs fixed effect model with shrinkage prior on coefficients.}
-
-\item{ols.weight}{If TRUE, OLS estimates are used for adpative lasso weight vector.}
-
-\item{sparse.only}{If TRUE, skip MCMC and fit a sparse regressiong using adaptive lasso. This works only for n.break=0.}
 
 \item{mcmc}{MCMC iteration.}
 
@@ -49,6 +64,12 @@ If \code{n.break = 0}, it simply runs fixed effect model with shrinkage prior on
 \item{alpha}{= 1}
 
 \item{fomula}{Inherited from \code{lm}. For example, \code{Y ~ X + Z}.}
+
+\item{interaction}{If TRUE, all pairwise interactions are added.}
+
+\item{ols.weight}{If TRUE, OLS estimates are used for adpative lasso weight vector.}
+
+\item{sparse.only}{If TRUE, skip MCMC and fit a sparse regressiong using adaptive lasso. This works only for n.break=0.}
 }
 \description{
 Hybrid Approach to Bridge Change Point Model with Fixed Effect

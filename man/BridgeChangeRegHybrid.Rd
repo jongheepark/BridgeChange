@@ -4,13 +4,32 @@
 \alias{BridgeChangeRegHybrid}
 \title{Hybrid Bridge Regression with Change-point}
 \usage{
-BridgeChangeRegHybrid(y, X, n.break = 0, scale.data = TRUE,
-  intercept = TRUE, mcmc = 100, burn = 100, verbose = 100,
-  thin = 1, reduce.mcmc = NULL, ols.weight = FALSE, c0 = 0.1,
-  d0 = 0.1, nu.shape = 2, nu.rate = 2, known.alpha = FALSE,
-  alpha.start = 1, alpha.limit = FALSE, alpha.MH = TRUE,
-  beta.start = NULL, beta.alg = "SVD", regime.duration.min = 5,
-  waic = FALSE, marginal = FALSE)
+BridgeChangeRegHybrid(
+  y,
+  X,
+  n.break = 0,
+  scale.data = TRUE,
+  intercept = TRUE,
+  mcmc = 100,
+  burn = 100,
+  verbose = 100,
+  thin = 1,
+  reduce.mcmc = NULL,
+  ols.weight = FALSE,
+  c0 = 0.1,
+  d0 = 0.1,
+  nu.shape = 2,
+  nu.rate = 2,
+  known.alpha = FALSE,
+  alpha.start = 1,
+  alpha.limit = FALSE,
+  alpha.MH = TRUE,
+  beta.start = NULL,
+  beta.alg = "SVD",
+  regime.duration.min = 5,
+  waic = FALSE,
+  marginal = FALSE
+)
 }
 \arguments{
 \item{y}{Outcome vector.}

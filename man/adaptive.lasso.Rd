@@ -4,7 +4,7 @@
 \alias{adaptive.lasso}
 \title{Hybrid Approach to Bridge Change Point Model with Fixed Effect}
 \usage{
-adaptive.lasso(y, x)
+adaptive.lasso(y1, x1, beta.hat)
 }
 \arguments{
 \item{fomula}{Inherited from \code{lm}. For example, \code{Y ~ X + Z}.}

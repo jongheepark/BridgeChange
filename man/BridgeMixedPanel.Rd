@@ -4,13 +4,40 @@
 \alias{BridgeMixedPanel}
 \title{Mixed Effect Panel Model with Change-point}
 \usage{
-BridgeMixedPanel(y, X, W, subject.id, time.id, standardize = TRUE,
-  n.break = 1, mcmc = 100, burn = 100, verbose = 100, thin = 1,
-  b0, B0, c0 = 0.1, d0 = 0.1, r0, R0, a = NULL, b = NULL,
-  nu.shape = 2, nu.rate = 2, alpha = 1, alpha.MH = FALSE,
-  beta.start = NULL, sigma2.start = NA, D.start = NA, P.start = NA,
-  Waic = FALSE, marginal = FALSE, fixed = TRUE,
-  unscaled.Y = unscaled.Y, unscaled.X = unscaled.X)
+BridgeMixedPanel(
+  y,
+  X,
+  W,
+  subject.id,
+  time.id,
+  standardize = TRUE,
+  n.break = 1,
+  mcmc = 100,
+  burn = 100,
+  verbose = 100,
+  thin = 1,
+  b0,
+  B0,
+  c0 = 0.1,
+  d0 = 0.1,
+  r0,
+  R0,
+  a = NULL,
+  b = NULL,
+  nu.shape = 2,
+  nu.rate = 2,
+  alpha = 1,
+  alpha.MH = FALSE,
+  beta.start = NULL,
+  sigma2.start = NA,
+  D.start = NA,
+  P.start = NA,
+  Waic = FALSE,
+  marginal = FALSE,
+  fixed = TRUE,
+  unscaled.Y = unscaled.Y,
+  unscaled.X = unscaled.X
+)
 }
 \arguments{
 \item{y}{Reponse vector}

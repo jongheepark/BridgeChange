@@ -62,7 +62,7 @@
 #' An algorithm to sample beta.
 #' Default is \code{beta.alg = "SVD"}.
 #' Also supported is \code{beta.alg = "BCK"} and \code{beta.alg = "CHL"}.
-#' @param waic
+#' @param Waic
 #' If \code{TRUE}, WAIC is computed after the parameter estimation.
 #' Default is \code{FALSE}.
 #' @param marginal
@@ -89,7 +89,7 @@ BridgeChangeReg <- function(y, X,                   # inputs
   known.alpha = FALSE, alpha.start = 1,             # alpha related args
   alpha.limit = FALSE, alpha.MH = TRUE,
   beta.start = NULL, beta.alg = "SVD",              # beta realted args
-  waic = FALSE, marginal = FALSE                    # model selection args
+  Waic = FALSE, marginal = FALSE                    # model selection args
 ) {
 
   ## ---------------------------------------------------- ##
@@ -356,7 +356,7 @@ BridgeChangeReg <- function(y, X,                   # inputs
         sdraws[(iter-burn)/thin,]  <- state
       }
 
-      if (waic) {
+      if (Waic) {
         mu.state <- X %*% t(beta)
         d <- sapply(1:ntime, function(t) {
           dnorm(ydm[t], mean = c(mu.state[t, state[t]]), sd = sqrt(sig2[state[t]]), log=TRUE)
@@ -376,8 +376,8 @@ BridgeChangeReg <- function(y, X,                   # inputs
     mu.st.state <- X %*% t(beta.st)
     resid <- sapply(1:ntime, function(t){ydm[t] - c(mu.st.state[t, state[t]])})
     Waic.out <- NULL
-  if(marginal){
-
+    if(marginal){
+        
         ## ---------------------------------------------------- ##
         ## prepare
         ## ---------------------------------------------------- ##
@@ -511,8 +511,6 @@ BridgeChangeReg <- function(y, X,                   # inputs
             # if (n.break > 0 & demean == TRUE) {
             #     ydm <- as.vector(as.vector(y) - tapply(y, state, mean)[state])
             # }
->>>>>>> 9261927a984f545cb28f0202fdd59a6805067ac4
-
         }
         density.sig2 <- log(prod(apply(density.sig2.holder, 2, mean)))
         cat("\n---------------------------------------------- \n ")
@@ -715,42 +713,38 @@ BridgeChangeReg <- function(y, X,                   # inputs
         cat("    log posterior density : ", as.numeric(logdenom), "\n")
         cat("----------------------------------------------------\n")
     }
+    
 
     end.time = proc.time();
     ## end.time = proc.time();
     runtime = (end.time - start.time)[1];
     Waic.out <- NULL
-
-<<<<<<< HEAD
-        ## run time information and waic
-        end.time <- proc.time();
-        runtime <- (end.time - start.time)[1];
-        if (isTRUE(waic)){
-            ## Waic computation
-            Waic.out <- waic_calc(Z.loglike.array)$total
-            rm(Z.loglike.array)
-
-            if (verbose > 0) {
-                cat("\n----------------------------------------------",'\n')
-                cat("WAIC: ", Waic.out[1], "\n")
-                ## cat("lpd: ", Waic.out[3], "\n")
-                ## cat("p_Waic: ", Waic.out[4], "\n")
-                cat("trun time: ", runtime, '\n')
-                cat("----------------------------------------------",'\n')
-            }
-        } else {
-            if (verbose > 0) {
-                cat("\n----------------------------------------------",'\n')
-                cat("trun time: ", runtime, '\n')
-                cat("----------------------------------------------",'\n')
-            }
-            
+    if (isTRUE(Waic)){
+        ## Waic computation
+        Waic.out <- waic_calc(Z.loglike.array)$total
+        rm(Z.loglike.array)
+        
+        if (verbose > 0) {
+            cat("\n----------------------------------------------",'\n')
+            cat("WAIC: ", Waic.out[1], "\n")
+            ## cat("lpd: ", Waic.out[3], "\n")
+            ## cat("p_Waic: ", Waic.out[4], "\n")
+            cat("trun time: ", runtime, '\n')
+            cat("----------------------------------------------",'\n')
         }
-     }
+    } else {
+        if (verbose > 0) {
+            cat("\n----------------------------------------------",'\n')
+            cat("trun time: ", runtime, '\n')
+            cat("----------------------------------------------",'\n')
+        }
+        
+    }
+    
     ## ---------------------------------------------------- ##
     ## OUTPUT
     ## ---------------------------------------------------- ##
-      
+    
     
     ## attr(output, "prob.state") <- ps.store/(mcmc/thin)
     ## pull together matrix and build MCMC object to return
@@ -783,6 +777,12 @@ BridgeChangeReg <- function(y, X,                   # inputs
         ps.holder <- matrix(ps.store, ntime, ns)
         s.holder  <- matrix(sdraws, nstore, ntime)
     }
+
+    
+    
+    ## ---------------------------------------------------- ##
+    ## OUTPUT
+    ## ---------------------------------------------------- ##
     
     ## attr(output, "X") <- X
     attr(output, "title") <- "BridgeChangeReg Posterior Sample"
@@ -801,85 +801,14 @@ BridgeChangeReg <- function(y, X,                   # inputs
         prob.state <- cbind(sapply(1:ns, function(k){apply(s.holder == k, 2, mean)}))
         attr(output, "prob.state") <- prob.state
         attr(output, "lambda") <- output4
-=======
-  if (isTRUE(waic)){
-    ## Waic computation
-    Waic.out <- waic_calc(Z.loglike.array)$total
-    rm(Z.loglike.array)
-
-    if (verbose > 0) {
-      cat("\n----------------------------------------------------\n")
-      cat("WAIC: ", Waic.out[1], "\n")
-      ## cat("lpd: ", Waic.out[3], "\n")
-      ## cat("p_Waic: ", Waic.out[4], "\n")
-      cat("Run time: ", runtime, '\n')
-      cat("----------------------------------------------------\n")
-    }
-  } else {
-    if (verbose > 0) {
-      cat("\n----------------------------------------------------\n")
-      cat("Run time: ", runtime, '\n')
-      cat("----------------------------------------------------\n")
->>>>>>> 9261927a984f545cb28f0202fdd59a6805067ac4
     }
     attr(output, "Waic.out") <- Waic.out
     if(marginal){
         attr(output, "loglike") <- loglike
         attr(output, "logmarglike") <- logmarglike
     }
-<<<<<<< HEAD
     
     class(output) <- c("mcmc", "BridgeChange")
     
     return(output)
-} 
-    
-=======
-
-    output1 <- coda::mcmc(data=betadraws, start=burn+1, end=burn + mcmc, thin=thin)
-    output2 <- coda::mcmc(data=sigmadraws, start=burn+1, end=burn + mcmc, thin=thin)
-    output4 <- coda::mcmc(data=lambdadraws, start=burn+1, end=burn + mcmc, thin=thin)
-
-    colnames(output1)  <- sapply(c(1:ns), function(i) { paste(xnames, "_regime", i, sep = "") })
-    colnames(output2)  <- sapply(c(1:ns), function(i) { paste("sigma2_regime", i, sep = "") })
-    colnames(output4)  <- sapply(c(1:ns), function(i) { paste(lnames, "_regime", i, sep = "") })
-
-    output    <- as.mcmc(cbind(output1, output2))
-    ps.holder <- matrix(ps.store, ntime, ns)
-    s.holder  <- matrix(sdraws, nstore, ntime)
-  }
-
-
-  ## ---------------------------------------------------- ##
-  ## OUTPUT
-  ## ---------------------------------------------------- ##
-
-  ## attr(output, "X") <- X
-  attr(output, "title") <- "BridgeChangeReg Posterior Sample"
-  attr(output, "intercept") <- coda::mcmc(beta0draws,start=burn+1, end=burn + mcmc, thin=thin)
-  attr(output, "y")       <- y
-  attr(output, "X")       <- X
-  attr(output, "resid")   <- resid
-  attr(output, "y.sd")    <- y.sd
-  attr(output, "X.sd")    <- X.sd
-  attr(output, "m")       <- m
-  attr(output, "ntime")   <- ntime
-  attr(output, "alpha")   <- coda::mcmc(data=alphadraws, start=burn+1, end=burn + mcmc, thin=thin)
-  attr(output, "tau")     <- coda::mcmc(data=taudraws, start=burn+1, end=burn + mcmc, thin=thin)
-  if (n.break > 0){
-    attr(output, "s.store") <- s.holder
-    prob.state <- cbind(sapply(1:ns, function(k){apply(s.holder == k, 2, mean)}))
-    attr(output, "prob.state") <- prob.state
-    attr(output, "lambda") <- output4
-  }
-  attr(output, "Waic.out") <- Waic.out
-  if(marginal){
-    attr(output, "loglike") <- loglike
-    attr(output, "logmarglike") <- logmarglike
-  }
-
-  class(output) <- c("mcmc", "BridgeChange")
-
-  return(output)
 }
->>>>>>> 9261927a984f545cb28f0202fdd59a6805067ac4

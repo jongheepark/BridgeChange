@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-
 marglike_BridgeChangeReg <- function() {
 
 
@@ -344,7 +342,6 @@ marglike_BridgeChangeReg <- function() {
 
   return(list("loglike" = loglike, "logmarglike" = logmarglike))
 }
-=======
 # 
 # marglike_BridgeChangeReg <- function() {
 # 
@@ -690,4 +687,3 @@ marglike_BridgeChangeReg <- function() {
 # 
 #   return(list("loglike" = loglike, "logmarglike" = logmarglike))
 # }
->>>>>>> 9261927a984f545cb28f0202fdd59a6805067ac4

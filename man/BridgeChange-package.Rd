@@ -18,7 +18,7 @@ Specifically, this package offers the following functions:
 }
 }
 \author{
-\strong{Maintainer}: Soichiro Yamauchi \email{syamauchi@princeton.edu}
+\strong{Maintainer}: Soichiro Yamauchi \email{syamauchi@g.harvard.edu}
 
 Authors:
 \itemize{

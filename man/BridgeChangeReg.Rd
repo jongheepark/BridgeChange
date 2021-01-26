@@ -4,12 +4,30 @@
 \alias{BridgeChangeReg}
 \title{Bridge Regression with Change-point}
 \usage{
-BridgeChangeReg(y, X, n.break = 0, scale.data = TRUE,
-  intercept = TRUE, mcmc = 100, burn = 100, verbose = 100,
-  thin = 1, reduce.mcmc = NULL, c0 = 0.1, d0 = 0.1, nu.shape = 2,
-  nu.rate = 2, known.alpha = FALSE, alpha.start = 1,
-  alpha.limit = FALSE, alpha.MH = TRUE, beta.start = NULL,
-  beta.alg = "SVD", waic = FALSE, marginal = FALSE)
+BridgeChangeReg(
+  y,
+  X,
+  n.break = 0,
+  scale.data = TRUE,
+  intercept = TRUE,
+  mcmc = 100,
+  burn = 100,
+  verbose = 100,
+  thin = 1,
+  reduce.mcmc = NULL,
+  c0 = 0.1,
+  d0 = 0.1,
+  nu.shape = 2,
+  nu.rate = 2,
+  known.alpha = FALSE,
+  alpha.start = 1,
+  alpha.limit = FALSE,
+  alpha.MH = TRUE,
+  beta.start = NULL,
+  beta.alg = "SVD",
+  Waic = FALSE,
+  marginal = FALSE
+)
 }
 \arguments{
 \item{y}{Outcome vector.}
@@ -72,7 +90,7 @@ Default is \code{NULL}.}
 Default is \code{beta.alg = "SVD"}.
 Also supported is \code{beta.alg = "BCK"} and \code{beta.alg = "CHL"}.}
 
-\item{waic}{If \code{TRUE}, WAIC is computed after the parameter estimation.
+\item{Waic}{If \code{TRUE}, WAIC is computed after the parameter estimation.
 Default is \code{FALSE}.}
 
 \item{marginal}{If \code{TRUE}, the marginal likelihood is computed based on Chib's method.

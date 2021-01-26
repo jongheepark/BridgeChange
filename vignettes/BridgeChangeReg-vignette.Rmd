@@ -55,15 +55,15 @@ mcmc <- burn <- 100; thin <- 1; verbose <- 100
 set.seed(11173)
 out0 <- BridgeChangeReg(y=sim$y.c, X=sim$x.c, scale.data=TRUE, intercept=FALSE,
                         mcmc=mcmc, burn = burn, thin=thin, verbose=verbose,
-                        alpha.MH=TRUE, n.break = 0, waic=TRUE)
+                        alpha.MH=TRUE, n.break = 0, Waic=TRUE)
 
 set.seed(11173)
 out1 <- BridgeChangeReg(y=sim$y, X=sim$x, scale.data=TRUE, intercept=FALSE,
                         mcmc=mcmc, burn=burn, thin=thin, verbose=verbose,
-                        alpha.MH=TRUE, n.break = 1, waic=TRUE)
+                        alpha.MH=TRUE, n.break = 1, Waic=TRUE)
 
 # model selection 
-wiac <- WaicCompare(list(out0, out1), print = TRUE)
+(waic.result <- WaicCompare(list(out0, out1), print = TRUE))
 
 # state plot 
 MCMCpack::plotState(out1)

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ######################################################################################################
 ## The idea is to develop a sparsity-induced prior-posterior model that fits data
 ## Bridge regression using mixture of normals representation.
@@ -14,6 +13,7 @@
 #' For example, \code{index = c("unit", "year")}.
 #' @param model Model (\code{c("within","between", "pooling")}).
 #' @param effect Effect (\code{c("individual", "time", "twoways")}).
+#' @param standardize If TRUE, all covariates are standardized.
 #' @param interaction If TRUE, all pairwise interactions are added. 
 #' @param n.break Number of breaks.
 #' If \code{n.break = 0}, it simply runs fixed effect model with shrinkage prior on coefficients.
@@ -256,7 +256,7 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
     if(standardize) attr(output, "dat.sd") <- dat.sd
     return(output)
 }
-=======
+
 ######################################################################################################
 ## The idea is to develop a sparsity-induced prior-posterior model that fits data
 ## Bridge regression using mixture of normals representation.
@@ -387,4 +387,3 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
     # class(output) <- c("mcmc", "BridgeChange")
     return(output)
 }
->>>>>>> 9261927a984f545cb28f0202fdd59a6805067ac4
