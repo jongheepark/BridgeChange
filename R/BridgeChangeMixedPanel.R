@@ -58,11 +58,7 @@ BridgeMixedPanel <- function(
     subject.id,
     time.id,
     standardize = TRUE,
-<<<<<<< HEAD
     n.break = 1, ## intercept=FALSE, 
-=======
-    n.break = 1,
->>>>>>> 9261927a984f545cb28f0202fdd59a6805067ac4
     mcmc=100, burn=100, verbose=100, thin = 1,
     b0, B0, c0 = 0.1, d0 = 0.1, r0, R0, a = NULL, b = NULL,
     nu.shape=2.0, nu.rate=2.0, alpha = 1, alpha.MH = FALSE,
@@ -77,10 +73,7 @@ BridgeMixedPanel <- function(
     m  <- n.break;
     ns <- m + 1
     NT <-  length(y)
-<<<<<<< HEAD
     X <- Xorig  <- as.matrix(X);
-=======
->>>>>>> 9261927a984f545cb28f0202fdd59a6805067ac4
     K  <-  ncol(X)
     Q  <-  ncol(W)
     N  <- length(unique(subject.id))  # number of subject
@@ -499,10 +492,7 @@ BridgeMixedPanel <- function(
         if (iter > burn && (iter %% thin == 0)) {
             alphadraws[(iter-burn)/thin,]  <- alpha
             betadraws[(iter-burn)/thin,]   <- t(beta)
-<<<<<<< HEAD
             beta0draws[(iter-burn)/thin,]  <- as.vector(beta0)
-=======
->>>>>>> 9261927a984f545cb28f0202fdd59a6805067ac4
             lambdadraws[(iter-burn)/thin,] <- t(lambda)
             sigmadraws[(iter-burn)/thin,]  <- sig2
             taudraws[(iter-burn)/thin,]    <- tau
