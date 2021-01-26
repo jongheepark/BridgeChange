@@ -206,7 +206,6 @@ BridgeMixedPanel <- function(
             sig2 <- rep(sigma2start, ns)
         }
     }
-    ols    <-  lm(y ~ X-1)
     lambda <- rmvnorm(ns, rep(1, K));
     tau    <- rep(1, ns);
     alpha  <- rep(alpha[1], ns);
