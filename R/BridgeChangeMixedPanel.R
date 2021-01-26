@@ -1186,10 +1186,14 @@ BridgeMixedPanel <- function(
     if(Waic == TRUE){
         ## Waic computation
 <<<<<<< HEAD
+<<<<<<< HEAD
         Waic.out <- waic_calc(Z.loglike.array)$total
 =======
         Waic.out <- waic(Z.loglike.array)$total
 >>>>>>> 9261927a984f545cb28f0202fdd59a6805067ac4
+=======
+        Waic.out <- waic_calc(Z.loglike.array)$total
+>>>>>>> fca668c8cce9c317e06867cc16a8162bb41548e2
         rm(Z.loglike.array)
 
         cat("\n----------------------------------------------",'\n')
@@ -1272,10 +1276,7 @@ BridgeMixedPanel <- function(
     attr(output, "y.all")   <- y
     attr(output, "X.all")   <- X
     attr(output, "m")       <- m
-<<<<<<< HEAD
     attr(output, "intercept") <- coda::mcmc(beta0draws,start=burn+1, end=burn + mcmc, thin=thin)
-=======
->>>>>>> 9261927a984f545cb28f0202fdd59a6805067ac4
     attr(output, "nsubj")   <- nsubj
     attr(output, "ntime")   <- ntime
     attr(output, "alpha")   <- coda::mcmc(data=alphadraws, start=burn+1, end=burn + mcmc, thin=thin)
