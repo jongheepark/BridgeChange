@@ -272,7 +272,7 @@ BridgeChangeReg <- function(y, X,                   # inputs
     if (beta.alg %in% c("BCK")) {
       beta <- draw_beta_BCK_cpp(Xm, Ym, lambda, sig2, tau, ns, K)
     } else if (beta.alg %in% c("CHL")){
-      beta <- draw_beta_cpp(XX, XY, lambda, sig2, tau, ns, K)
+      beta <- draw_beta_cpp(Xm, Xm, lambda, sig2, tau, ns, K)
     } else {
       stop("This algorithm is not supported. Please read the documentation on beta.alg!\n")
     }
