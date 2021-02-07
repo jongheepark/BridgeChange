@@ -58,7 +58,7 @@ BridgeMixedPanel <- function(
     subject.id,
     time.id,
     standardize = TRUE,
-    n.break = 1, ## intercept=FALSE,
+    n.break = 1,
     mcmc=100, burn=100, verbose=100, thin = 1,
     b0, B0, c0 = 0.1, d0 = 0.1, r0, R0, a = NULL, b = NULL,
     nu.shape=2.0, nu.rate=2.0, alpha = 1, alpha.MH = FALSE,
@@ -73,7 +73,7 @@ BridgeMixedPanel <- function(
     m  <- n.break;
     ns <- m + 1
     NT <-  length(y)
-    X <- Xorig  <- as.matrix(X);
+    X  <- Xorig  <- as.matrix(X);
     K  <-  ncol(X)
     Q  <-  ncol(W)
     N  <- length(unique(subject.id))  # number of subject
@@ -83,39 +83,19 @@ BridgeMixedPanel <- function(
     # data transformation
     ## ---------------------------------------------------- ##
     if (standardize) {
-        ## save original information
-        ysd <- sd(y)
-        Xsd <- apply(X, 2, sd)
+      ## save original information
+      ysd <- sd(y)
+      Xsd <- apply(X, 2, sd)
 
-        ## demeaning Y
-        Y <- scale(y) #as.matrix(y - mean(y, na.rm = TRUE))
-        X <- as.matrix(scale(X))
-        if (!fixed) W <- as.matrix(scale(W))
+      ## demeaning Y
+      Y <- scale(y) #as.matrix(y - mean(y, na.rm = TRUE))
+      X <- as.matrix(scale(X))
+      if (!fixed) W <- as.matrix(scale(W))
     } else {
-        Y <- as.matrix(y)
-        X <- as.matrix(X)
-        W <- as.matrix(W)
+      Y <- as.matrix(y)
+      X <- as.matrix(X)
+      W <- as.matrix(W)
     }
-
-    ## ---------------------------------------------------- ##
-    # take all pair-wise interactions
-    ## ---------------------------------------------------- ##
-    # if(inter){
-    #     if(length(which(apply(X, 2, sd)==0)) > 0){
-    #         X0 <- X[, -which(apply(X, 2, sd)==0)]
-    #     }else{
-    #         X0 <- X
-    #     }
-    #     x1.1 <- data.frame(X0)
-    #     var.names <- colnames(X0)
-    #     x1.2 <- t(apply(x1.1, 1, combn, 2, prod))
-    #     newX <- as.matrix(cbind(x1.1, x1.2))
-    #     colnames(newX) <- c(var.names, combn(var.names, 2, paste, collapse="-"))
-    #     X <- cbind(X[, which(apply(X, 2, sd)==0)], newX)
-    #     K  <-  ncol(X)
-    #
-    # }
-
 
     ## ---------------------------------------------------- ##
     ## Sort Data based on time.id
@@ -220,9 +200,7 @@ BridgeMixedPanel <- function(
     betadraws   <- matrix(data=0, nstore, ns*K)
     lambdadraws <- matrix(data=0, nstore, ns*K)
     sigmadraws  <- beta0draws <- matrix(data=0, nstore, ns)
-    if(!fixed){
-        Ddraws <- matrix(data=0, nstore, ns*Q*Q)
-    }
+    if(!fixed) Ddraws <- matrix(data=0, nstore, ns*Q*Q)
     psdraws     <- matrix(data=0, ntime, ns)
     sdraws      <- matrix(data=0, nstore, ntime)
     Z.loglike.array <- matrix(data=0, nstore, NT)
@@ -347,19 +325,10 @@ BridgeMixedPanel <- function(
                     ## Nj[j] = YN[j] + yj.rows();
                     e = t(ehatj - Wj%*%bi[[j]])%*%(ehatj - Wj%*%bi[[j]]);
                     SSE[j] = SSE[j] + e
-                    ## cat("sse: ", j, " = ", SSE[j], "\n")
+
                 }
             }
         }
-        ## cat("sse:  = ", SSE, "\n")
-
-        ## bi_out <- draw_bi_cpp(y, X, W, D, Dinv, XVX, XVy, SSE, sig2, beta,
-        ##                         state, time.id, subject.id, N, ns)
-        ## XVy <- lapply(bi_out$XVy, function(x) matrix(x, K, 1))
-        ## XVX <- lapply(bi_out$XVX, function(x) matrix(x, K, K, byrow = TRUE))
-        ## SSE <- bi_out$SSE
-        ## br  <- lapply(bi_out$br, function(x) matrix(x, Q, N, byrow = TRUE))
-        ## cat("sse:  = ", SSE, "\n")
 
         ## ---------------------------------------------------- ##
         ## Step 3: sig2 (change!!)
@@ -709,7 +678,7 @@ BridgeMixedPanel <- function(
                 }
             }
             ## Reduced Step 5: beta
-            beta <- draw_beta_svd_cpp(XVX, XVy, lambda, sig2, tau.st, ns, K)
+            beta <- draw_beta_BCK_cpp(XVX, XVy, lambda, sig2, tau.st, ns, K)
 
             ## Reduced Step 6: alpha
             for (j in 1:ns){
@@ -932,9 +901,7 @@ BridgeMixedPanel <- function(
                     }
                 }
                 ## Reduced Step 4: beta
-                beta <- draw_beta_svd_cpp(XVX, XVy, lambda, sig2.st, tau.st, ns, K)
-                ## beta <- draw_beta_cpp(XVX, XVy, lambda, sig2.st, tau.st, ns, K)
-                ## beta <- draw_beta_cpp(XX, XY, lambda, sig2, tau.st, ns, K)
+                beta <- draw_beta_BCK_cpp(XVX, XVy, lambda, sig2.st, tau.st, ns, K)
 
                 ## Reduced Step 5: alpha
                 for (j in 1:ns){
@@ -1026,7 +993,7 @@ BridgeMixedPanel <- function(
                     }
                 }
                 ## Reduced Step 2: beta
-                beta <- draw_beta_svd_cpp(XVX, XVy, lambda, sig2.st, tau.st, ns, K)
+                beta <- draw_beta_BCK_cpp(XVX, XVy, lambda, sig2.st, tau.st, ns, K)
 
                 ## Reduced Step 3: alpha
                 for (j in 1:ns){
