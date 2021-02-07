@@ -58,7 +58,7 @@ BridgeMixedPanel <- function(
     subject.id,
     time.id,
     standardize = TRUE,
-    n.break = 1, ## intercept=FALSE, 
+    n.break = 1, ## intercept=FALSE,
     mcmc=100, burn=100, verbose=100, thin = 1,
     b0, B0, c0 = 0.1, d0 = 0.1, r0, R0, a = NULL, b = NULL,
     nu.shape=2.0, nu.rate=2.0, alpha = 1, alpha.MH = FALSE,
@@ -83,10 +83,10 @@ BridgeMixedPanel <- function(
     # data transformation
     ## ---------------------------------------------------- ##
     if (standardize) {
-        ## save original information 
+        ## save original information
         ysd <- sd(y)
         Xsd <- apply(X, 2, sd)
-        
+
         ## demeaning Y
         Y <- scale(y) #as.matrix(y - mean(y, na.rm = TRUE))
         X <- as.matrix(scale(X))
@@ -113,7 +113,7 @@ BridgeMixedPanel <- function(
     #     colnames(newX) <- c(var.names, combn(var.names, 2, paste, collapse="-"))
     #     X <- cbind(X[, which(apply(X, 2, sd)==0)], newX)
     #     K  <-  ncol(X)
-    # 
+    #
     # }
 
 
@@ -398,7 +398,7 @@ BridgeMixedPanel <- function(
         ## ---------------------------------------------------- ##
         ## Step 6: beta (change)
         ## ---------------------------------------------------- ##
-        beta <- draw_beta_svd_cpp(XVX, XVy, lambda, sig2, tau, ns, K)
+        beta <- draw_beta_BCK_cpp(XVX, XVy, lambda, sig2, tau, ns, K)
 
         ## ---------------------------------------------------- ##
         ## Step 7: alpha (no change)
@@ -422,7 +422,7 @@ BridgeMixedPanel <- function(
         ## ---------------------------------------------------- ##
         ## Step 8: sampling S (change)
         ## ---------------------------------------------------- ##
-        if (n.break > 0) {      
+        if (n.break > 0) {
            ## tau, alpha, lambda are all marginalized out in likelihood!
             ## state.out <- sparse.panel.state.sampler(m=m, T=T, N=N,  Yt_arr=Yt_arr, Xt_arr=Xt_arr,
             ##                                         Wt_arr=Wt_arr, beta=beta, bi=bi, sig2=sig2, D=D, P=P)
@@ -514,7 +514,7 @@ BridgeMixedPanel <- function(
                         if(nj > 0){
                             yj  <-  matrix(y[ej==1], nj, 1)
                             Xj  <-  matrix(X[ej==1,], nj, K)
-                            
+
                             if(fixed){
                                 mu.state  <-  Xj%*%beta[j,]
                             } else{
@@ -525,7 +525,7 @@ BridgeMixedPanel <- function(
                             ## cat("dnorm is ", dnorm(yj, mean = mu.state, sd=sqrt(sig2[j]), log=TRUE), "\n")
                             Z.loglike.array[(iter-burn)/thin, marker:(marker+nj-1)] <-
                                 dnorm(yj, mean = mu.state, sd=sqrt(sig2[j]), log=TRUE)
-                            
+
                             ## log(dnorm(yi, Mu, sqrt(sig2)))
                         }
                         marker   <-  marker + nj
@@ -554,7 +554,7 @@ BridgeMixedPanel <- function(
             Dinv.st[[j]] <- chol2inv(chol(D.st[[j]]))
         }
     }
-    
+
     alpha.st <- apply(alphadraws, 2, mean)
     tau.st <- apply(taudraws, 2, mean)
     if(n.break > 0){
@@ -601,7 +601,7 @@ BridgeMixedPanel <- function(
     cat("Likelihood computation \n")
     cat("    loglike: ", as.numeric(loglike), "\n")
     cat("---------------------------------------------- \n ")
-    
+
     if(marginal){
         ## holders
         density.sig2.holder <- density.nu.holder <- density.D.holder <- matrix(NA, mcmc, ns)
@@ -1184,7 +1184,7 @@ BridgeMixedPanel <- function(
                 betadraws[,idx[[s]]] <- t(apply(betadraws[,idx[[s]]], 1, function(x) x * C1))
             }
         }
-        
+
         output1 <- coda::mcmc(data=betadraws, start=burn+1, end=burn + mcmc, thin=thin)
         output2 <- coda::mcmc(data=sigmadraws, start=burn+1, end=burn + mcmc, thin=thin)
         if(!fixed){
