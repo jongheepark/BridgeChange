@@ -24,7 +24,7 @@ BridgeChangeReg(
   alpha.limit = FALSE,
   alpha.MH = TRUE,
   beta.start = NULL,
-  beta.alg = "SVD",
+  beta.alg = "BCK",
   Waic = FALSE,
   marginal = FALSE
 )
@@ -87,8 +87,8 @@ Default is \code{TRUE}.}
 Default is \code{NULL}.}
 
 \item{beta.alg}{An algorithm to sample beta.
-Default is \code{beta.alg = "SVD"}.
-Also supported is \code{beta.alg = "BCK"} and \code{beta.alg = "CHL"}.}
+Default is \code{beta.alg = "BCK"}.
+Also supported is the traditional sampler based on the Cholesky decomposition: \code{beta.alg = "CHL"}.}
 
 \item{Waic}{If \code{TRUE}, WAIC is computed after the parameter estimation.
 Default is \code{FALSE}.}

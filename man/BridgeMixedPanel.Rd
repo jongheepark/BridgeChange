@@ -35,8 +35,8 @@ BridgeMixedPanel(
   Waic = FALSE,
   marginal = FALSE,
   fixed = TRUE,
-  unscaled.Y = unscaled.Y,
-  unscaled.X = unscaled.X
+  unscaled.Y,
+  unscaled.X
 )
 }
 \arguments{

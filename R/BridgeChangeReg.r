@@ -60,8 +60,8 @@
 #' Default is \code{TRUE}.
 #' @param beta.alg
 #' An algorithm to sample beta.
-#' Default is \code{beta.alg = "SVD"}.
-#' Also supported is \code{beta.alg = "BCK"} and \code{beta.alg = "CHL"}.
+#' Default is \code{beta.alg = "BCK"}.
+#' Also supported is the traditional sampler based on the Cholesky decomposition: \code{beta.alg = "CHL"}.
 #' @param Waic
 #' If \code{TRUE}, WAIC is computed after the parameter estimation.
 #' Default is \code{FALSE}.
@@ -88,7 +88,7 @@ BridgeChangeReg <- function(y, X,                   # inputs
   c0 = 0.1, d0 = 0.1, nu.shape = 2.0, nu.rate = 2.0,# priors / hyper params
   known.alpha = FALSE, alpha.start = 1,             # alpha related args
   alpha.limit = FALSE, alpha.MH = TRUE,
-  beta.start = NULL, beta.alg = "SVD",              # beta realted args
+  beta.start = NULL, beta.alg = "BCK",              # beta realted args
   Waic = FALSE, marginal = FALSE                    # model selection args
 ) {
 
@@ -269,12 +269,10 @@ BridgeChangeReg <- function(y, X,                   # inputs
     ## ---------------------------------------------------- ##
     ## Step 4: beta
     ## ---------------------------------------------------- ##
-    if(beta.alg %in% c("SVD")) {
-      beta <- draw_beta_svd_cpp(Xm, Ym, lambda, sig2, tau, ns, K)
-    } else if (beta.alg %in% c("BCK")) {
+    if (beta.alg %in% c("BCK")) {
       beta <- draw_beta_BCK_cpp(Xm, Ym, lambda, sig2, tau, ns, K)
     } else if (beta.alg %in% c("CHL")){
-      beta <- draw_beta_cpp(XX, XY, lambda, sig2, tau, ns, K)
+      beta <- draw_beta_cpp(Xm, Xm, lambda, sig2, tau, ns, K)
     } else {
       stop("This algorithm is not supported. Please read the documentation on beta.alg!\n")
     }
@@ -377,7 +375,7 @@ BridgeChangeReg <- function(y, X,                   # inputs
     resid <- sapply(1:ntime, function(t){ydm[t] - c(mu.st.state[t, state[t]])})
     Waic.out <- NULL
     if(marginal){
-        
+
         ## ---------------------------------------------------- ##
         ## prepare
         ## ---------------------------------------------------- ##
@@ -398,7 +396,7 @@ BridgeChangeReg <- function(y, X,                   # inputs
                                                      mean = c(mu.st.state[t, state.st[t]]),
                                                      sd=sqrt(sig2.st[state.st[t]]), log=TRUE)})
       loglike <- sum(loglike.t)
-      
+
         cat("\n---------------------------------------------- \n ")
         cat("Likelihood computation \n")
         cat("    loglike: ", as.numeric(loglike), "\n")
@@ -713,7 +711,7 @@ BridgeChangeReg <- function(y, X,                   # inputs
         cat("    log posterior density : ", as.numeric(logdenom), "\n")
         cat("----------------------------------------------------\n")
     }
-    
+
 
     end.time = proc.time();
     ## end.time = proc.time();
@@ -723,7 +721,7 @@ BridgeChangeReg <- function(y, X,                   # inputs
         ## Waic computation
         Waic.out <- waic_calc(Z.loglike.array)$total
         rm(Z.loglike.array)
-        
+
         if (verbose > 0) {
             cat("\n----------------------------------------------",'\n')
             cat("WAIC: ", Waic.out[1], "\n")
@@ -738,20 +736,20 @@ BridgeChangeReg <- function(y, X,                   # inputs
             cat("trun time: ", runtime, '\n')
             cat("----------------------------------------------",'\n')
         }
-        
+
     }
-    
+
     ## ---------------------------------------------------- ##
     ## OUTPUT
     ## ---------------------------------------------------- ##
-    
-    
+
+
     ## attr(output, "prob.state") <- ps.store/(mcmc/thin)
     ## pull together matrix and build MCMC object to return
     xnames <-  sapply(c(1:K), function(i) { paste("beta", i, sep = "") })
     lnames <- sapply(c(1:K), function(i) { paste("lambda", i, sep = "") })
     output <- NA
-    
+
     if (n.break == 0) {
         if (isTRUE(scale.data)) betadraws <- betadraws * sd(y) / apply(X, 2, sd) ## report the coef in the original scale
         output <- as.mcmc(cbind(betadraws, sigmadraws))
@@ -764,26 +762,26 @@ BridgeChangeReg <- function(y, X,                   # inputs
             for (s in 1:ns) {
                 betadraws[,idx[[s]]] <- t(apply(betadraws[,idx[[s]]], 1, function(x) x * C1))
             }
-        
+
         output1 <- coda::mcmc(data=betadraws, start=burn+1, end=burn + mcmc, thin=thin)
         output2 <- coda::mcmc(data=sigmadraws, start=burn+1, end=burn + mcmc, thin=thin)
         output4 <- coda::mcmc(data=lambdadraws, start=burn+1, end=burn + mcmc, thin=thin)
-        
+
         colnames(output1)  <- sapply(c(1:ns), function(i) { paste(xnames, "_regime", i, sep = "") })
         colnames(output2)  <- sapply(c(1:ns), function(i) { paste("sigma2_regime", i, sep = "") })
         colnames(output4)  <- sapply(c(1:ns), function(i) { paste(lnames, "_regime", i, sep = "") })
-        
+
         output    <- as.mcmc(cbind(output1, output2))
         ps.holder <- matrix(ps.store, ntime, ns)
         s.holder  <- matrix(sdraws, nstore, ntime)
     }
 
-    
-    
+
+
     ## ---------------------------------------------------- ##
     ## OUTPUT
     ## ---------------------------------------------------- ##
-    
+
     ## attr(output, "X") <- X
     attr(output, "title") <- "BridgeChangeReg Posterior Sample"
     attr(output, "intercept") <- coda::mcmc(beta0draws,start=burn+1, end=burn + mcmc, thin=thin)
@@ -807,8 +805,8 @@ BridgeChangeReg <- function(y, X,                   # inputs
         attr(output, "loglike") <- loglike
         attr(output, "logmarglike") <- logmarglike
     }
-    
+
     class(output) <- c("mcmc", "BridgeChange")
-    
+
     return(output)
 }
