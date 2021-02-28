@@ -36,6 +36,18 @@
 #'
 #'
 ## Adaptive for each regime
+adaptive.lasso <- function(y, x){
+    fit.ridge <- cv.glmnet(y = y, x = x, type.measure="mse",
+                           alpha=0, standardize = TRUE, family="gaussian")
+    w3 <- 1/abs(matrix(coef(fit.ridge, s=fit.ridge$lambda.min)[, 1][2:(ncol(x)+1)] ))^1 ## Using gamma = 1
+    w3[w3[,1] == Inf] <- 999999999 ## Replacing values estimated as Infinite for 999999999
+    cv.adaptive <- cv.glmnet(x=x, y=y, family='gaussian', alpha=1, penalty.factor=w3)
+    beta.adaptive <- coef(cv.adaptive)[-1]
+    return(beta.adaptive)
+}
+
+
+## Adaptive for each regime
 BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
                              standardize = TRUE, interaction = FALSE,
                              n.break = 1, ols.weight = FALSE, sparse.only = FALSE,
@@ -185,7 +197,8 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
         R2.DSS.jhp.total <- r.square.sparse.total(y = y, yhat = yhat, yhat.sparse=yhat.sparse.dss)
         R2.CP.jhp.total <- r.square.sparse.total(y = y, yhat = yhat, yhat.sparse=yhat.sparse.cp)
 
-        cat("Total :---------------------------------------------------------------------- \n Pseudo R-squared (DSS) : ", R2.DSS.jhp.total, "and Pseudo R-squared (CP) ", R2.CP.jhp.total, "\n")
+        cat("Total :---------------------------------------------------------------------- \n Pseudo R-squared (DSS) : ",
+            R2.DSS.jhp.total, "and Pseudo R-squared (CP) ", R2.CP.jhp.total, "\n")
 
 
     }else{
@@ -256,40 +269,6 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
     if(standardize) attr(output, "dat.sd") <- dat.sd
     return(output)
 }
-
-######################################################################################################
-## The idea is to develop a sparsity-induced prior-posterior model that fits data
-## Bridge regression using mixture of normals representation.
-## by JHP "Wed Oct 19 15:13:47 2016"
-######################################################################################################
-
-#' Hybrid Approach to Bridge Change Point Model with Fixed Effect
-#'
-#' @param fomula Inherited from \code{lm}. For example, \code{Y ~ X + Z}.
-#' @param data Data.frame object.
-#' @param index
-#' String vector for unit and time index variables.
-#' For example, \code{index = c("unit", "year")}.
-#' @param model Model (\code{c("within","between", "pooling")}).
-#' @param effect Effect (\code{c("individual", "time", "twoways")}).
-#' @param n.break Number of breaks.
-#' If \code{n.break = 0}, it simply runs fixed effect model with shrinkage prior on coefficients.
-#' @param mcmc MCMC iteration.
-#' @param burn Burn-in period.
-#' @param verbose Verbose.
-#' @param thin Thinning.
-#' @param c0 Hyperparam
-#' @param d0 = 0.1
-#' @param nu.shape =2.0
-#' @param nu.rate =2.0
-#' @param alpha  = 1
-#'
-#'
-#' @author Jong Hee Park, and Soichiro Yamauchi \email{syamauchi@princeton.edu}
-#'
-#' @export
-#'
-#'
 ## Adaptive for each regime
 adaptive.lasso <- function(y, x){
     fit.ridge <- cv.glmnet(y = y, x = x, type.measure="mse",
