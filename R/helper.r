@@ -251,15 +251,25 @@ adaptive.lasso2 <- function(y, x){
 ## hybrid
 ## location.bar is the x location of the legend starting
 ## 
-dotplotRegime <- function(out, start, cex=1, x.location=c("random", "legend", "default"),
+dotplotRegime <- function(out, hybrid=TRUE, start, cex=1, x.location=c("random", "legend", "default"),
                           order.state = 1, location.bar=9, text.cex=1, legend.position = "topright",
                           select=NULL, main="", raw=FALSE){
     state <- round(apply(attr(out, "s.store"), 2, mean))
     unique.time.index <- start : (start + length(state) - 1)
-    if(raw){
-        coefs <- attr(out, "hybrid.raw")
+    m <- attr(out, "m")
+    X <- attr(out, "X")
+    k <- dim(X)[2]
+    if(hybrid){
+        if(raw){
+            coefs <- attr(out, "hybrid.raw")
+        }else{
+            coefs <- attr(out, "hybrid")
+        }
     }else{
-        coefs <- attr(out, "hybrid")
+        ### coefs <- summary(out)[[1]][,1]
+        beta.target <- out[, grepl("beta", colnames(out))]
+        coefs <- matrix(apply(beta.target, 2, mean), k, m+1)
+        rownames(coefs) <- colnames(X)     
     }
     if(!is.null(select)){
         coefs <- coefs[grep(select, rownames(coefs)),]

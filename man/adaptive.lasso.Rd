@@ -18,14 +18,22 @@ For example, \code{index = c("unit", "year")}.}
 
 \item{effect}{Effect (\code{c("individual", "time", "twoways")}).}
 
+\item{standardize}{If TRUE, all covariates are standardized.}
+
+\item{interaction}{If TRUE, all pairwise interactions are added.}
+
 \item{n.break}{Number of breaks.
 If \code{n.break = 0}, it simply runs fixed effect model with shrinkage prior on coefficients.}
+
+\item{ols.weight}{If TRUE, OLS estimates are used for adpative lasso weight vector.}
 
 \item{mcmc}{MCMC iteration.}
 
 \item{burn}{Burn-in period.}
 
 \item{verbose}{Verbose.}
+
+\item{sparse.only}{If TRUE, skip MCMC and fit a sparse regressiong using adaptive lasso. This works only for n.break=0.}
 
 \item{thin}{Thinning.}
 
