@@ -11,8 +11,10 @@ BridgeFixedPanel(
   model,
   effect,
   standardize = TRUE,
-  inter = FALSE,
+  interaction = FALSE,
+  allway.interaction = FALSE,
   n.break = 1,
+  alpha.MH = FALSE,
   mcmc = 100,
   burn = 100,
   verbose = 100,
@@ -42,6 +44,8 @@ For example, \code{index = c("unit", "year")}.}
 
 \item{n.break}{Number of breaks.
 If \code{n.break = 0}, it simply runs fixed effect model with shrinkage prior on coefficients.}
+
+\item{alpha.MH}{If \code{TRUE}, alpha is updated by MH algorithm. By default, it is updated by griddy gibbs.}
 
 \item{mcmc}{MCMC iteration.}
 

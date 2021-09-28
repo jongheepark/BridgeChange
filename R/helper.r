@@ -250,7 +250,10 @@ adaptive.lasso2 <- function(y, x){
 
 ## hybrid
 ## location.bar is the x location of the legend starting
-## 
+## select = grep coefficients containing a string
+## hybrid=TRUE and raw=TRUE, use original y for variable selection
+## hybrid=TRUE and raw=FALSE, use yhat for variable selection
+
 dotplotRegime <- function(out, hybrid=TRUE, start, cex=1, x.location=c("random", "legend", "default"),
                           order.state = 1, location.bar=9, text.cex=1, legend.position = "topright",
                           select=NULL, main="", raw=FALSE){

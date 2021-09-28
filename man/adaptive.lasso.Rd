@@ -22,6 +22,8 @@ For example, \code{index = c("unit", "year")}.}
 
 \item{interaction}{If TRUE, all pairwise interactions are added.}
 
+\item{allway.interaction}{If TRUE, all-way interactions are added}
+
 \item{n.break}{Number of breaks.
 If \code{n.break = 0}, it simply runs fixed effect model with shrinkage prior on coefficients.}
 

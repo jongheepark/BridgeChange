@@ -15,6 +15,7 @@
 #' @param effect Effect (\code{c("individual", "time", "twoways")}).
 #' @param standardize If TRUE, all covariates are standardized.
 #' @param interaction If TRUE, all pairwise interactions are added.
+#' @param allway.interaction If TRUE, all-way interactions are added
 #' @param n.break Number of breaks.
 #' If \code{n.break = 0}, it simply runs fixed effect model with shrinkage prior on coefficients.
 #' @param ols.weight If TRUE, OLS estimates are used for adpative lasso weight vector.
@@ -49,7 +50,7 @@ adaptive.lasso <- function(y, x){
 
 ## Adaptive for each regime
 BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
-                             standardize = TRUE, interaction = FALSE,
+                             standardize = TRUE, interaction = FALSE, allway.interaction = FALSE,
                              n.break = 1, ols.weight = FALSE, sparse.only = FALSE,
                              mcmc = 100, burn = 100, verbose = 100, thin = 1,
                              b0=0, B0=1, c0 = 0.1, d0 = 0.1, r0 =  1, R0 = 1,
@@ -78,13 +79,25 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
     m <- n.break
     W <- matrix(0, length(y), 1)
 
-    if(interaction){
+    if(interaction & !allway.interaction){
         x1.1 <- data.frame(X)
         var.names <- colnames(X)
         x1.2 <- matrix(t(apply(x1.1, 1, combn, 2, prod)), nrow = nrow(X))
         newX <- as.matrix(cbind(x1.1, x1.2))
         colnames(newX) <- c(var.names, combn(var.names, 2, paste, collapse="-"))
         X <- newX
+    }
+    if(allway.interaction){
+        newX <- list()
+        newX[[1]] <- X
+        x1.1 <- data.frame(X)
+        var.names <- colnames(X)
+        for(j in 2:ncol(plmX)){
+            x1.2 <- matrix(t(apply(x1.1, 1, combn, j, prod)), nrow = nrow(X))
+            newX[[j]] <- as.matrix(x1.2)
+            colnames(newX[[j]]) <- c(combn(var.names, j, paste, collapse="-"))
+        }
+        X <- Reduce(cbind, newX)
     }
     unscaled.Y <- y
     unscaled.X <- X

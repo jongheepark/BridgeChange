@@ -65,7 +65,7 @@
 #' Starting value for alpha.
 #' When \code{known.alpha = TRUE}, alpha is fixed to the value of this argument.
 #' Default is 1.
-#' @regime.duration.min The minimum length of time in each regime. Default is 5.
+#' @param regime.duration.min The minimum length of time in each regime. Default is 5.
 #' If regime is shorter than this limit, hybrid analysis is skipped.  
 #' @param alpha.MH
 #' If \code{TRUE}, alpha is updated by the Metropolis–Hastings algorithm.

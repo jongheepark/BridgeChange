@@ -19,6 +19,7 @@
 #' @param burn Burn-in period.
 #' @param verbose Verbose.
 #' @param thin Thinning.
+#' @param alpha.MH  If \code{TRUE}, alpha is updated by MH algorithm. By default, it is updated by griddy gibbs.
 #' @param c0 Hyperparam
 #' @param d0 = 0.1
 #' @param nu.shape =2.0
@@ -33,8 +34,9 @@
 #' @export
 #' 
 BridgeFixedPanel <- function(formula, data, index, model, effect,
-                             standardize = TRUE, inter = FALSE, 
-                             n.break = 1, 
+                             standardize = TRUE,
+                             interaction = FALSE, allway.interaction = FALSE,
+                             n.break = 1, alpha.MH = FALSE,
                              mcmc = 100, burn = 100, verbose = 100, thin = 1,
                              b0=0, B0=1, c0 = 0.1, d0 = 0.1, r0 =  1, R0 = 1,
                              nu.shape = 2.0, nu.rate = 2.0, alpha = 1,
@@ -73,13 +75,25 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
     
     W <- matrix(0, length(y), 1)
     
-    if(inter){
+    if(interaction & !allway.interaction){
         x1.1 <- data.frame(X)
         var.names <- colnames(X)
         x1.2 <- matrix(t(apply(x1.1, 1, combn, 2, prod)), nrow = nrow(X))
         newX <- as.matrix(cbind(x1.1, x1.2))
         colnames(newX) <- c(var.names, combn(var.names, 2, paste, collapse="-"))
         X <- newX
+    }
+    if(allway.interaction){
+        newX <- list()
+        newX[[1]] <- X
+        x1.1 <- data.frame(X)
+        var.names <- colnames(X)
+        for(j in 2:ncol(plmX)){
+            x1.2 <- matrix(t(apply(x1.1, 1, combn, j, prod)), nrow = nrow(X))
+            newX[[j]] <- as.matrix(x1.2)
+            colnames(newX[[j]]) <- c(combn(var.names, j, paste, collapse="-"))
+        }
+        X <- Reduce(cbind, newX)
     }
     unscaled.Y <- y
     unscaled.X <- X
@@ -112,7 +126,7 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
     ## ---------------------------------------------------- ##
     output <- BridgeMixedPanel(subject.id = subject.id, time.id = time.id, y=as.vector(y), X=X, W=W,
                                n.break = n.break, b0=b0, B0=B0, c0=c0, d0=d0, r0=r0, R0=R0,
-                               standardize = FALSE,
+                               standardize = FALSE, alpha.MH = alpha.MH, 
                                mcmc = mcmc, burn = burn, thin = thin, verbose=verbose, 
                                nu.shape = 2.0, nu.rate = 2.0, alpha = 1, Waic = Waic, marginal = marginal, fixed = TRUE,
                                unscaled.Y = unscaled.Y, unscaled.X = unscaled.X)

@@ -95,6 +95,9 @@ Default is \code{NULL}.}
 Default is \code{beta.alg = "SVD"}.
 Also supported is \code{beta.alg = "BCK"} and \code{beta.alg = "CHL"}.}
 
+\item{regime.duration.min}{The minimum length of time in each regime. Default is 5.
+If regime is shorter than this limit, hybrid analysis is skipped.}
+
 \item{waic}{If \code{TRUE}, WAIC is computed after the parameter estimation.
 Default is \code{FALSE}.}
 
