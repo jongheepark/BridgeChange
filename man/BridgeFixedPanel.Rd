@@ -11,8 +11,7 @@ BridgeFixedPanel(
   model,
   effect,
   standardize = TRUE,
-  interaction = FALSE,
-  allway.interaction = FALSE,
+  interaction = 1,
   n.break = 1,
   alpha.MH = FALSE,
   mcmc = 100,
@@ -41,6 +40,8 @@ For example, \code{index = c("unit", "year")}.}
 \item{model}{Model (\code{c("within","between", "pooling")}).}
 
 \item{effect}{Effect (\code{c("individual", "time", "twoways")}).}
+
+\item{interaction}{If interaction = 1, no interaciton. If interaction = 2, only two-way interaciton. Interaction can be up to K, which is the rank of the model matrix.}
 
 \item{n.break}{Number of breaks.
 If \code{n.break = 0}, it simply runs fixed effect model with shrinkage prior on coefficients.}

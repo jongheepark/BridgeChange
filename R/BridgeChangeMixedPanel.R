@@ -163,7 +163,7 @@ BridgeMixedPanel <- function(
   ## Initialize.
   ## ---------------------------------------------------- ##
   if (dim(X)[2] < dim(Y)[1]) {
-    ols <- lm(y ~ X - 1)
+    ols <- lm(Y ~ X-1)
     sig2 <- rep(summary(ols)$sigma, ns)^2
     if (is.na(sigma2.start[1])) {
       sig2 <- rep(summary(ols)$sigma, ns)^2
@@ -171,8 +171,8 @@ BridgeMixedPanel <- function(
       sig2 <- rep(sigma2start, ns)
     }
   } else {
-    ## if p > n, set p = n - 2 for ols initialization
-    ols <- lm(y ~ X[, 1:(length(y) - 2)] - 1)
+    ## if p > n, set p = n - 1 for ols initialization
+    ols <- lm(Y ~ X[, 2:length(y)])
     if (is.na(sigma2.start[1])) {
       sig2 <- rep(summary(ols)$sigma, ns)^2
     } else {
@@ -186,9 +186,9 @@ BridgeMixedPanel <- function(
   if (!is.null(beta.start)) {
     beta <- matrix(beta.start, nrow = ns, ncol = length(beta.start))
   } else {
-    cat("Initializing betas by SLOG\n")
-    beta_slog <- SLOG(x = X, y = y, l = tau[1])
-    beta <- matrix(beta_slog, nrow = ns, ncol = length(beta_slog))
+      cat("Initializing betas by SLOG\n")
+      beta_slog <- SLOG(x = X, y = Y, l = tau[1])
+      beta <- matrix(beta_slog, nrow = ns, ncol = length(beta_slog))
   }
 
   ## ---------------------------------------------------- ##
@@ -221,7 +221,7 @@ BridgeMixedPanel <- function(
   Yt_arr <- Xt_arr <- Wt_arr <- as.list(rep(NA, ntime))
   for (tt in 1:ntime) {
     N.tt <- sum(time.id == tt)
-    Yt_arr[[tt]] <- as.matrix(y[time.id == tt], N.tt, 1)
+    Yt_arr[[tt]] <- as.matrix(Y[time.id == tt], N.tt, 1)
     Xt_arr[[tt]] <- as.matrix(X[time.id == tt, ], N.tt, K)
     Wt_arr[[tt]] <- as.matrix(W[time.id == tt, ], N.tt, Q)
   }
@@ -292,7 +292,7 @@ BridgeMixedPanel <- function(
         for (j in 1:ns) {
           ej <- as.numeric(is.element(time.id, which(state == j)) & subject.id == i)
           nj <- sum(ej)
-          yj <- matrix(y[ej == 1], nj, 1)
+          yj <- matrix(Y[ej == 1], nj, 1)
           Xj <- matrix(X[ej == 1, ], nj, K)
           ehatj <- yj - Xj %*% beta[j, ]
           ## Vj  <-  solve(sig2[j]*diag(nj))
@@ -307,7 +307,7 @@ BridgeMixedPanel <- function(
         for (j in 1:ns) {
           ej <- as.numeric(is.element(time.id, which(state == j)) & subject.id == i)
           nj <- sum(ej)
-          yj <- matrix(y[ej == 1], nj, 1)
+          yj <- matrix(Y[ej == 1], nj, 1)
           Xj <- matrix(X[ej == 1, ], nj, K)
           Wj <- matrix(W[ej == 1, ], nj, Q)
           ehatj <- yj - Xj %*% beta[j, ]
@@ -359,7 +359,7 @@ BridgeMixedPanel <- function(
     ## ---------------------------------------------------- ##
     for (j in 1:ns) {
       for (k in 1:K) {
-        lambda[j, k] <- 2 * retstable(0.5 * alpha[j], 1.0, beta[j, k]^2 / tau[j]^2, method = "LD")
+        lambda[j, k] <- 2 * retstable(0.5 * alpha[j], 1.0, (beta[j, k]/ tau[j])^2, method = "LD")
       }
     }
 
@@ -1138,49 +1138,50 @@ BridgeMixedPanel <- function(
   }
   ## attr(output, "prob.state") <- ps.store/(mcmc/thin)
   ## pull together matrix and build MCMC object to return
-  xnames <- sapply(c(1:K), function(i) {
-    paste("beta", i, sep = "")
-  })
-  lnames <- sapply(c(1:K), function(i) {
-    paste("lambda", i, sep = "")
-  })
-  Dnames <- sapply(c(1:(Q * Q)), function(i) {
-    paste("D", i, sep = "")
-  })
-  output <- NA
-  if (m == 0) {
-    if (standardize) betadraws <- betadraws * ysd / Xsd
-
-    if (fixed) {
-      output <- as.mcmc(cbind(betadraws, sigmadraws))
-      colnames(output) <- c(xnames, "sigma2")
+    ## if(is.null(dimnames(X)[[2]])){
+    xnames <- sapply(c(1:K), function(i) {
+        paste("beta", i, sep = "")
+        })
+    lnames <- sapply(c(1:K), function(i) {
+        paste("lambda", i, sep = "")
+    })
+    Dnames <- sapply(c(1:(Q * Q)), function(i) {
+        paste("D", i, sep = "")
+    })
+    output <- NA
+    if (m == 0) {
+        if (standardize) betadraws <- betadraws * ysd / Xsd
+        
+        if (fixed) {
+            output <- as.mcmc(cbind(betadraws, sigmadraws))
+            colnames(output) <- c(xnames, "sigma2")
+        } else {
+            output <- as.mcmc(cbind(betadraws, sigmadraws, Ddraws))
+            colnames(output) <- c(xnames, "sigma2", Dnames)
+        }
     } else {
-      output <- as.mcmc(cbind(betadraws, sigmadraws, Ddraws))
-      colnames(output) <- c(xnames, "sigma2", Dnames)
-    }
-  } else {
-    if (standardize) {
-      sidx <- rep(1:ns, each = ncol(X))
-      xidx <- 1:ncol(betadraws)
-      idx <- split(xidx, sidx)
-      C1 <- ysd / Xsd # sd(y) / apply(X, 2, sd)
-      for (s in 1:ns) {
-        betadraws[, idx[[s]]] <- t(apply(betadraws[, idx[[s]]], 1, function(x) x * C1))
-      }
-    }
-
-    output1 <- coda::mcmc(data = betadraws, start = burn + 1, end = burn + mcmc, thin = thin)
-    output2 <- coda::mcmc(data = sigmadraws, start = burn + 1, end = burn + mcmc, thin = thin)
-    if (!fixed) {
-      output3 <- coda::mcmc(data = Ddraws, start = burn + 1, end = burn + mcmc, thin = thin)
-    }
-    output4 <- coda::mcmc(data = lambdadraws, start = burn + 1, end = burn + mcmc, thin = thin)
-    colnames(output1) <- sapply(
-      c(1:ns),
-      function(i) {
-        paste(xnames, "_regime", i, sep = "")
-      }
-    )
+        if (standardize) {
+            sidx <- rep(1:ns, each = ncol(X))
+            xidx <- 1:ncol(betadraws)
+            idx <- split(xidx, sidx)
+            C1 <- ysd / Xsd # sd(y) / apply(X, 2, sd)
+            for (s in 1:ns) {
+                betadraws[, idx[[s]]] <- t(apply(betadraws[, idx[[s]]], 1, function(x) x * C1))
+            }
+        }
+        
+        output1 <- coda::mcmc(data = betadraws, start = burn + 1, end = burn + mcmc, thin = thin)
+        output2 <- coda::mcmc(data = sigmadraws, start = burn + 1, end = burn + mcmc, thin = thin)
+        if (!fixed) {
+            output3 <- coda::mcmc(data = Ddraws, start = burn + 1, end = burn + mcmc, thin = thin)
+        }
+        output4 <- coda::mcmc(data = lambdadraws, start = burn + 1, end = burn + mcmc, thin = thin)
+        colnames(output1) <- sapply(
+            c(1:ns),
+            function(i) {
+                paste(xnames, "_regime", i, sep = "")
+            }
+        )
     colnames(output2) <- sapply(
       c(1:ns),
       function(i) {
@@ -1210,34 +1211,44 @@ BridgeMixedPanel <- function(
     ps.holder <- matrix(ps.store, ntime, ns)
     s.holder <- matrix(sdraws, nstore, ntime)
   }
-  ## attr(output, "X") <- X
-  attr(output, "title") <- "SparseChangeMixedPanel Posterior Sample"
-  ## attr(output, "call")   <- cl
-  attr(output, "y") <- y[1:ntime]
-  attr(output, "X") <- X[1:ntime, ]
-  attr(output, "y.all") <- y
-  attr(output, "X.all") <- X
-  attr(output, "m") <- m
-  attr(output, "intercept") <- coda::mcmc(beta0draws, start = burn + 1, end = burn + mcmc, thin = thin)
-  attr(output, "nsubj") <- nsubj
-  attr(output, "ntime") <- ntime
-  attr(output, "alpha") <- coda::mcmc(data = alphadraws, start = burn + 1, end = burn + mcmc, thin = thin)
-  attr(output, "tau") <- coda::mcmc(data = taudraws, start = burn + 1, end = burn + mcmc, thin = thin)
-  attr(output, "random.perturb") <- random.perturb / totiter
-  if (m > 0) {
-    attr(output, "s.store") <- s.holder
-    prob.state <- cbind(sapply(1:ns, function(k) {
-      apply(s.holder == k, 2, mean)
-    }))
-    attr(output, "prob.state") <- prob.state
-    attr(output, "lambda") <- output4
-  }
-  attr(output, "Waic.out") <- Waic.out
-  attr(output, "loglike") <- loglike
-  attr(output, "resid") <- resid
-  if (marginal) {
-    attr(output, "logmarglike") <- logmarglike
-  }
-  class(output) <- c("mcmc", "BridgeChange")
-  return(output)
+    ## attr(output, "X") <- X
+    if(ns>1){
+        attr(output, "xnames") <- sapply(
+            c(1:ns),
+            function(i) {
+                paste(dimnames(X)[[2]], "_regime", i, sep = "")
+            }
+        )
+    }else{
+        attr(output, "xnames") <- dimnames(X)[[2]]
+    }
+    attr(output, "title") <- "BridgeChangeMixedPanel Posterior Sample"
+    ## attr(output, "call")   <- cl
+    attr(output, "y") <- y[1:ntime]
+    attr(output, "X") <- X[1:ntime, ]
+    attr(output, "y.all") <- y
+    attr(output, "X.all") <- X
+    attr(output, "m") <- m
+    attr(output, "intercept") <- coda::mcmc(beta0draws, start = burn + 1, end = burn + mcmc, thin = thin)
+    attr(output, "nsubj") <- nsubj
+    attr(output, "ntime") <- ntime
+    attr(output, "alpha") <- coda::mcmc(data = alphadraws, start = burn + 1, end = burn + mcmc, thin = thin)
+    attr(output, "tau") <- coda::mcmc(data = taudraws, start = burn + 1, end = burn + mcmc, thin = thin)
+    attr(output, "random.perturb") <- random.perturb / totiter
+    if (m > 0) {
+        attr(output, "s.store") <- s.holder
+        prob.state <- cbind(sapply(1:ns, function(k) {
+            apply(s.holder == k, 2, mean)
+        }))
+        attr(output, "prob.state") <- prob.state
+        attr(output, "lambda") <- output4
+    }
+    attr(output, "Waic.out") <- Waic.out
+    attr(output, "loglike") <- loglike
+    attr(output, "resid") <- resid
+    if (marginal) {
+        attr(output, "logmarglike") <- logmarglike
+    }
+    class(output) <- c("mcmc", "BridgeChange")
+    return(output)
 }

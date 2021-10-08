@@ -13,6 +13,7 @@
 #' For example, \code{index = c("unit", "year")}.
 #' @param model Model (\code{c("within","between", "pooling")}).
 #' @param effect Effect (\code{c("individual", "time", "twoways")}).
+#' @param interaction If interaction = 1, no interaciton. If interaction = 2, only two-way interaciton. Interaction can be up to K, which is the rank of the model matrix. 
 #' @param n.break Number of breaks.
 #' If \code{n.break = 0}, it simply runs fixed effect model with shrinkage prior on coefficients.
 #' @param mcmc MCMC iteration.
@@ -35,7 +36,7 @@
 #' 
 BridgeFixedPanel <- function(formula, data, index, model, effect,
                              standardize = TRUE,
-                             interaction = FALSE, allway.interaction = FALSE,
+                             interaction = 1, 
                              n.break = 1, alpha.MH = FALSE,
                              mcmc = 100, burn = 100, verbose = 100, thin = 1,
                              b0=0, B0=1, c0 = 0.1, d0 = 0.1, r0 =  1, R0 = 1,
@@ -67,34 +68,6 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
     X <- model.matrix(pformula, pdata, rhs = 1, model = model, effect = effect)
     y <- pmodel.response(pformula, pdata, model = model, effect = effect)
 
-    ##
-    ## centering X and Y?
-    ##
-    m <- n.break
-    #     
-    
-    W <- matrix(0, length(y), 1)
-    
-    if(interaction & !allway.interaction){
-        x1.1 <- data.frame(X)
-        var.names <- colnames(X)
-        x1.2 <- matrix(t(apply(x1.1, 1, combn, 2, prod)), nrow = nrow(X))
-        newX <- as.matrix(cbind(x1.1, x1.2))
-        colnames(newX) <- c(var.names, combn(var.names, 2, paste, collapse="-"))
-        X <- newX
-    }
-    if(allway.interaction){
-        newX <- list()
-        newX[[1]] <- X
-        x1.1 <- data.frame(X)
-        var.names <- colnames(X)
-        for(j in 2:ncol(plmX)){
-            x1.2 <- matrix(t(apply(x1.1, 1, combn, j, prod)), nrow = nrow(X))
-            newX[[j]] <- as.matrix(x1.2)
-            colnames(newX[[j]]) <- c(combn(var.names, j, paste, collapse="-"))
-        }
-        X <- Reduce(cbind, newX)
-    }
     unscaled.Y <- y
     unscaled.X <- X
 
@@ -105,7 +78,34 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
         X <- scale(X)
         y <- scale(as.vector(y))        
     }
+    ##
+    ## centering X and Y?
+    ##
+    m <- n.break
+    #     
+    
+    W <- matrix(0, length(y), 1)
+    
+    interaction <- min(ncol(X), interaction)
+    if(interaction>1){
+        newX <- list()
+        newX[[1]] <- X
+        x1.1 <- data.frame(X)
+        var.names <- colnames(X)
+        for(j in 2:interaction){
+            x1.2 <- matrix(t(apply(x1.1, 1, combn, j, prod)), nrow = nrow(X))
+            newX[[j]] <- as.matrix(x1.2)
+            colnames(newX[[j]]) <- c(combn(var.names, j, paste, collapse="-"))
+        }
+        X <- Reduce(cbind, newX)
+        ## Drop covariates with all zero
+        if(sum(apply(X, 2, sd) == 0)>0){
+            cat("Some interactions (", sum(apply(X, 2, sd) == 0) , ") are all zero. So they are removed!\n")
+            X <- X[, apply(X, 2, sd)!=0]
+        }
+    }
 
+  
     # data2 <- cbind(data[, index], y, X)
     # var.names <- colnames(data2)
     # colnames(data2) <- gsub("X", "", var.names)

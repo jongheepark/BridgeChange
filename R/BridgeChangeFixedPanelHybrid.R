@@ -14,8 +14,7 @@
 #' @param model Model (\code{c("within","between", "pooling")}).
 #' @param effect Effect (\code{c("individual", "time", "twoways")}).
 #' @param standardize If TRUE, all covariates are standardized.
-#' @param interaction If TRUE, all pairwise interactions are added.
-#' @param allway.interaction If TRUE, all-way interactions are added
+#' @param interaction If interaction = 1, no interaciton. If interaction = 2, only two-way interaciton. Interaction can be up to K, which is the rank of the model matrix. 
 #' @param n.break Number of breaks.
 #' If \code{n.break = 0}, it simply runs fixed effect model with shrinkage prior on coefficients.
 #' @param ols.weight If TRUE, OLS estimates are used for adpative lasso weight vector.
@@ -47,11 +46,11 @@ adaptive.lasso <- function(y, x){
     return(beta.adaptive)
 }
 
-
 ## Adaptive for each regime
 BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
-                             standardize = TRUE, interaction = FALSE, allway.interaction = FALSE,
+                             standardize = TRUE, interaction = 1, 
                              n.break = 1, ols.weight = FALSE, sparse.only = FALSE,
+                             alpha.MH = FALSE,
                              mcmc = 100, burn = 100, verbose = 100, thin = 1,
                              b0=0, B0=1, c0 = 0.1, d0 = 0.1, r0 =  1, R0 = 1,
                              nu.shape = 2.0, nu.rate = 2.0, alpha = 1,
@@ -73,31 +72,42 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
     X <- plm:::model.matrix.pFormula(pformula, pdata, rhs = 1, model = model, effect = effect)
     y <- plm:::pmodel.response(pformula, pdata, model = model, effect = effect)
 
+    plm.index <- attr(X,"index")
+    if(model=="pooling"){
+        X <- X[,-1]
+    }
     plmX <- X
     plmy <- y
 
     m <- n.break
     W <- matrix(0, length(y), 1)
 
-    if(interaction & !allway.interaction){
-        x1.1 <- data.frame(X)
-        var.names <- colnames(X)
-        x1.2 <- matrix(t(apply(x1.1, 1, combn, 2, prod)), nrow = nrow(X))
-        newX <- as.matrix(cbind(x1.1, x1.2))
-        colnames(newX) <- c(var.names, combn(var.names, 2, paste, collapse="-"))
-        X <- newX
-    }
-    if(allway.interaction){
+    ## if(interaction & !allway.interaction){
+    ##     x1.1 <- data.frame(X)
+    ##     var.names <- colnames(X)
+    ##     x1.2 <- matrix(t(apply(x1.1, 1, combn, 2, prod)), nrow = nrow(X))
+    ##     newX <- as.matrix(cbind(x1.1, x1.2))
+    ##     colnames(newX) <- c(var.names, combn(var.names, 2, paste, collapse="-"))
+    ##     X <- newX
+    ## }
+    interaction <- min(ncol(plmX), interaction)
+    if(interaction>1){
         newX <- list()
         newX[[1]] <- X
         x1.1 <- data.frame(X)
         var.names <- colnames(X)
-        for(j in 2:ncol(plmX)){
+        for(j in 2:interaction){
             x1.2 <- matrix(t(apply(x1.1, 1, combn, j, prod)), nrow = nrow(X))
             newX[[j]] <- as.matrix(x1.2)
             colnames(newX[[j]]) <- c(combn(var.names, j, paste, collapse="-"))
         }
         X <- Reduce(cbind, newX)
+        ## Drop covariates with all zero
+        if(sum(apply(X, 2, sd) == 0)>0){
+            cat("Some interactions (", sum(apply(X, 2, sd) == 0) , ") are all zero. So they are removed!\n")
+            X <- X[, apply(X, 2, sd)!=0]
+        }
+
     }
     unscaled.Y <- y
     unscaled.X <- X
@@ -111,8 +121,12 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
         X <- scale(X)
         y <- scale(as.vector(y))
     }
-
-
+    ## if (Intercept) is NaN, replace it into 1.
+    ## if(is.nan(colMeans(X)["(Intercept)"])){
+    ##     X[,1] <- 1
+    ## }
+    
+    var.names <- colnames(X)
     subject.id <- as.numeric(as.factor(data[,index[1]]))
     time.id    <- as.numeric(as.factor(data[,index[2]]))
 
@@ -124,7 +138,7 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
     }else{
         output <- BridgeMixedPanel(subject.id = subject.id, time.id = time.id, y=as.vector(y), X=X, W=W,
                                    n.break = n.break, b0=b0, B0=B0, c0=c0, d0=d0, r0=r0, R0=R0,
-                                   standardize = standardize, alpha.MH=TRUE,
+                                   standardize = FALSE, alpha.MH=alpha.MH,
                                    mcmc = mcmc, burn = burn, thin = thin, verbose=verbose,
                                    nu.shape = 2.0, nu.rate = 2.0, alpha = 1, Waic = Waic, marginal = marginal, fixed = TRUE,
                                    unscaled.Y = unscaled.Y, unscaled.X = unscaled.X)
@@ -142,22 +156,39 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
 
         ## Following P. Richard HAHN and Carlos M. CARVALHO (Eq. 21)
         yhat <- sapply(1:length(y), function(tt){yhat.state[tt,state.indicator[tt]]})
-        unique.time.index <- sort(unique(attr(plmX,"index")[,2]))
+        unique.time.index <- sort(unique(plm.index[,2]))
         n.state <- length(unique(state))
         raw.y.list <- y.list <- x.list <- as.list(rep(NA, n.state))
         ## raw.y.list.0 <- y.list.0 <- x.list.0 <- as.list(rep(NA, n.state))
         for(i in 1:n.state){
-            ## x.list[[i]] <- X[ is.element(attr(plmX,"index")[,2], unique.time.index[state==i]), ]
-            ## augmenting data frame with cluster-mean centered variables
-            dat.x <- data.frame(X[ is.element(attr(plmX,"index")[,2], unique.time.index[state==i]), ])
-            dat.y <- data.frame(yhat[ is.element(attr(plmX,"index")[,2], unique.time.index[state==i])])
-            raw.y <- data.frame(y[ is.element(attr(plmX,"index")[,2], unique.time.index[state==i])])
-            dat.id <- subject.id[is.element(attr(plmX,"index")[,2], unique.time.index[state==i])]
+             ## group centering muted if pooling
+            if(model == "pooling"){
+                dat.x <- data.frame(X[ is.element(plm.index[,2], unique.time.index[state==i]), ])
+                dat.y <- data.frame(yhat[ is.element(plm.index[,2], unique.time.index[state==i])])
+                raw.y <- data.frame(y[ is.element(plm.index[,2], unique.time.index[state==i])])
+                dat.id <- subject.id[is.element(plm.index[,2], unique.time.index[state==i])]
+                x.list[[i]] <- as.matrix(dat.x)
+                y.list[[i]] <- as.matrix(dat.y)
+                raw.y.list[[i]] <- as.matrix(raw.y)
+ 
+            }else{
+                ## x.list[[i]] <- X[ is.element(plm.index[,2], unique.time.index[state==i]), ]
+                ## augmenting data frame with cluster-mean centered variables
+                dat.x <- data.frame(X[ is.element(plm.index[,2], unique.time.index[state==i]), ])
+                dat.y <- data.frame(yhat[ is.element(plm.index[,2], unique.time.index[state==i])])
+                raw.y <- data.frame(y[ is.element(plm.index[,2], unique.time.index[state==i])])
+                dat.id <- subject.id[is.element(plm.index[,2], unique.time.index[state==i])]
 
-            ## group centering
-            x.list[[i]] <- as.matrix(group.center(dat.x, dat.id))
-            y.list[[i]] <- as.matrix(group.center(dat.y, dat.id))
-            raw.y.list[[i]] <- as.matrix(group.center(raw.y, dat.id))
+                if(sum(state==i) == 1){
+                    x.list[[i]] <- as.matrix(dat.x)
+                    y.list[[i]] <- as.matrix(dat.y[[1]])
+                    raw.y.list[[i]] <- as.matrix(raw.y[[1]])
+                }else{
+                    x.list[[i]] <- as.matrix(group.center(dat.x, dat.id))
+                    y.list[[i]] <- as.matrix(group.center(dat.y, dat.id))
+                    raw.y.list[[i]] <- as.matrix(group.center(raw.y, dat.id))
+                }
+            }
             ## x.list.0[[i]] <- as.matrix(dat.x)
             ## y.list.0[[i]] <- as.matrix(dat.y)
             ## raw.y.list.0[[i]] <- as.matrix(raw.y)
@@ -217,9 +248,14 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
     }else{
         if(sparse.only){
             dat.id <- subject.id
-            ## group centering
-            dat.x <- as.matrix(group.center(X, dat.id))
-            raw.y <- as.matrix(group.center(matrix(y), dat.id))
+               ## group centering muted if pooling
+            if(model == "pooling"){
+                dat.x <- as.matrix(X)
+                raw.y <- as.matrix(Y)
+            }else{
+                dat.x <- as.matrix(group.center(X, dat.id))
+                raw.y <- as.matrix(group.center(matrix(y), dat.id))
+            }
             hybrid.cp <- matrix(adaptive.lasso.olsweight(raw.y, dat.x), ncol(X), 1)
             rownames(hybrid.cp) <- colnames(X)
             hybrid.dss <- NA
@@ -233,9 +269,13 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
             ## cat("y and yhat correlation is ", cor(yhat, y), "\n")
 
             ## group centering
-            dat.x <- as.matrix(group.center(X, dat.id))
-            dat.y <- as.matrix(group.center(matrix(yhat), dat.id))
-
+            if(model == "pooling"){
+                dat.x <- as.matrix(X)
+                dat.y <- as.matrix(yhat)
+            }else{
+                dat.x <- as.matrix(group.center(X, dat.id))
+                dat.y <- as.matrix(group.center(matrix(yhat), dat.id))
+            }
             ## Variable selection using adaptive lasso
             if(ols.weight){
                 hybrid.dss <- matrix(adaptive.lasso.olsweight(dat.y, dat.x), ncol(X), 1)
@@ -265,6 +305,8 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
 
         }
     }
+    ## attr(output, "xnames") <- dimnames(X)[[2]]
+    
     attr(output, "hybrid") <- hybrid.dss
     attr(output, "hybrid.raw") <- hybrid.cp
     if(sparse.only){
@@ -277,18 +319,8 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
             attr(output, "R2.total") <- list("R2.DSS" = R2.DSS.jhp, "R2.CP" = R2.CP.jhp)
         }
     }
-    attr(output, "title")  <- "SparseChangeFixedPanel Posterior Sample"
+    attr(output, "title")  <- "BridgeChangeFixedPanelHybrid Posterior Sample"
     attr(output, "m")      <- n.break
     if(standardize) attr(output, "dat.sd") <- dat.sd
     return(output)
-}
-## Adaptive for each regime
-adaptive.lasso <- function(y, x){
-    fit.ridge <- cv.glmnet(y = y, x = x, type.measure="mse",
-                           alpha=0, standardize = TRUE, family="gaussian")
-    w3 <- 1/abs(matrix(coef(fit.ridge, s=fit.ridge$lambda.min)[, 1][2:(ncol(x)+1)] ))^1 ## Using gamma = 1
-    w3[w3[,1] == Inf] <- 999999999 ## Replacing values estimated as Infinite for 999999999
-    cv.adaptive <- cv.glmnet(x=x, y=y, family='gaussian', alpha=1, penalty.factor=w3)
-    beta.adaptive <- coef(cv.adaptive)[-1]
-    return(beta.adaptive)
 }

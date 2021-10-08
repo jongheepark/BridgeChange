@@ -20,9 +20,7 @@ For example, \code{index = c("unit", "year")}.}
 
 \item{standardize}{If TRUE, all covariates are standardized.}
 
-\item{interaction}{If TRUE, all pairwise interactions are added.}
-
-\item{allway.interaction}{If TRUE, all-way interactions are added}
+\item{interaction}{If interaction = 1, no interaciton. If interaction = 2, only two-way interaciton. Interaction can be up to K, which is the rank of the model matrix.}
 
 \item{n.break}{Number of breaks.
 If \code{n.break = 0}, it simply runs fixed effect model with shrinkage prior on coefficients.}
