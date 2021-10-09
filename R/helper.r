@@ -6,6 +6,22 @@
 TRUNC = 0.64
 cutoff = 1 / TRUNC;
 
+## summarize only selected dss shrinkage output
+all.zero <- function(x){sum(x) + prod(x) == 0}
+summary.dss <- function(output, variable.names=TRUE){
+    coefs <- attr(output, "hybrid")
+    coefs <- coefs[-which(apply(coefs, 1, all.zero)),]
+    varnames <- str_replace(attr(output, "xnames")[,1], "_regime1","")
+    var.selected <- which(is.element(varnames, rownames(coefs)))
+    beta.selected <- c(sapply(1:ns, function(j){paste0("beta", var.selected, "_regime", j)}))
+    new.output <- output[, beta.selected]
+    if(variable.names){
+        names.selected <- c(sapply(1:ns, function(j){paste0(varnames[var.selected], "_regime", j)}))
+        colnames(new.output) <- names.selected
+    }
+    return(summary(new.output))
+}
+
 r.square.sparse <- function(y, yhat, x, beta.sparse, s2){
     N <- length(y)
     nXB <-  sum(yhat^2)/N
