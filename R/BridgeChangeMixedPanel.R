@@ -18,6 +18,7 @@
 #' @param W Design matrix for random effects.
 #' @param n.break Number of structural breaks (changepoints). If \code{n.break = 0} is specified,
 #'  usual panel model is run with shrinkage prior on coefficients.
+#' @param intercept boolean; if \code{FALSE}, the intercept is set to zero.
 #' @param mcmc =100
 #' @param burn =100
 #' @param verbose =100 Verbose
@@ -58,7 +59,7 @@ BridgeMixedPanel <- function(
   subject.id,
   time.id,
   standardize = TRUE,
-  n.break = 1,
+  n.break = 1, intercept = FALSE,
   mcmc = 100, burn = 100, verbose = 100, thin = 1,
   b0, B0, c0 = 0.1, d0 = 0.1, r0, R0, a = NULL, b = NULL,
   nu.shape = 2.0, nu.rate = 2.0, alpha = 1, alpha.MH = FALSE,

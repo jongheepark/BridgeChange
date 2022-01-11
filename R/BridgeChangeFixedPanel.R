@@ -131,7 +131,7 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
                                nu.shape = 2.0, nu.rate = 2.0, alpha = 1, Waic = Waic, marginal = marginal, fixed = TRUE,
                                unscaled.Y = unscaled.Y, unscaled.X = unscaled.X)
 
-    attr(output, "title")  <- "SparseChangeFixedPanel Posterior Sample"
+    attr(output, "title")  <- "BridgeChangeFixedPanel Posterior Sample"
     attr(output, "m")      <- n.break
     if(standardize) attr(output, "dat.sd") <- dat.sd
     # attr(output, "plm")     <- pm

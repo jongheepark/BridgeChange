@@ -154,8 +154,13 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
         ## yhat.state <- yhat.state - mean(yhat.state)
         state.indicator <- state[time.id]
 
+        ## yhat recompute using prob.state
+        yhat.mat <- X%*%beta.mean
+        prob.state <- cbind(sapply(1:ns, function(k){apply(attr(output, "s.store") == k, 2, mean)}))
+        yhat <- apply(yhat.mat*prob.state, 1, sum)
+
         ## Following P. Richard HAHN and Carlos M. CARVALHO (Eq. 21)
-        yhat <- sapply(1:length(y), function(tt){yhat.state[tt,state.indicator[tt]]})
+        ## yhat <- sapply(1:length(y), function(tt){yhat.state[tt,state.indicator[tt]]})
         unique.time.index <- sort(unique(plm.index[,2]))
         n.state <- length(unique(state))
         raw.y.list <- y.list <- x.list <- as.list(rep(NA, n.state))
@@ -177,16 +182,25 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
                 dat.x <- data.frame(X[ is.element(plm.index[,2], unique.time.index[state==i]), ])
                 dat.y <- data.frame(yhat[ is.element(plm.index[,2], unique.time.index[state==i])])
                 raw.y <- data.frame(y[ is.element(plm.index[,2], unique.time.index[state==i])])
-                dat.id <- subject.id[is.element(plm.index[,2], unique.time.index[state==i])]
 
                 if(sum(state==i) == 1){
+                    dat.id <- subject.id[is.element(plm.index[,2], unique.time.index[state==i])]
                     x.list[[i]] <- as.matrix(dat.x)
                     y.list[[i]] <- as.matrix(dat.y[[1]])
                     raw.y.list[[i]] <- as.matrix(raw.y[[1]])
                 }else{
-                    x.list[[i]] <- as.matrix(group.center(dat.x, dat.id))
-                    y.list[[i]] <- as.matrix(group.center(dat.y, dat.id))
-                    raw.y.list[[i]] <- as.matrix(group.center(raw.y, dat.id))
+                    if(effect == "time"){
+                        dat.id <- time.id[is.element(plm.index[,2], unique.time.index[state==i])]
+                        x.list[[i]] <- as.matrix(group.center(dat.x, dat.id))
+                        y.list[[i]] <- as.matrix(group.center(dat.y, dat.id))
+                        raw.y.list[[i]] <- as.matrix(group.center(raw.y, dat.id))
+
+                    }else{
+                        dat.id <- subject.id[is.element(plm.index[,2], unique.time.index[state==i])]
+                        x.list[[i]] <- as.matrix(group.center(dat.x, dat.id))
+                        y.list[[i]] <- as.matrix(group.center(dat.y, dat.id))
+                        raw.y.list[[i]] <- as.matrix(group.center(raw.y, dat.id))
+                    }
                 }
             }
             ## x.list.0[[i]] <- as.matrix(dat.x)
@@ -273,8 +287,12 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
                 dat.x <- as.matrix(X)
                 dat.y <- as.matrix(yhat)
             }else{
-                dat.x <- as.matrix(group.center(X, dat.id))
-                dat.y <- as.matrix(group.center(matrix(yhat), dat.id))
+                if(effect == "time"){
+                    dat.id <- time.id
+                }else{
+                    dat.x <- as.matrix(group.center(X, dat.id))
+                    dat.y <- as.matrix(group.center(matrix(yhat), dat.id))
+                }
             }
             ## Variable selection using adaptive lasso
             if(ols.weight){

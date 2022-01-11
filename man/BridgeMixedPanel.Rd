@@ -12,6 +12,7 @@ BridgeMixedPanel(
   time.id,
   standardize = TRUE,
   n.break = 1,
+  intercept = FALSE,
   mcmc = 100,
   burn = 100,
   verbose = 100,
@@ -56,6 +57,8 @@ Estimated parameters are always in the transformed scale.}
 
 \item{n.break}{Number of structural breaks (changepoints). If \code{n.break = 0} is specified,
 usual panel model is run with shrinkage prior on coefficients.}
+
+\item{intercept}{boolean; if \code{FALSE}, the intercept is set to zero.}
 
 \item{mcmc}{=100}
 

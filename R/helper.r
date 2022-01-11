@@ -6,6 +6,170 @@
 TRUNC = 0.64
 cutoff = 1 / TRUNC;
 
+dss.compute <- function(output, y, X){
+    ## compute residual
+    beta.out.shrink <- output[, grep("beta", colnames(output))]
+    K <- ncol(X)
+    ns <- attr(output, "m") + 1
+    beta.st   <- matrix(apply(beta.out.shrink, 2, mean), ns, K, byrow=TRUE)
+    mu.st.state <- X %*% t(beta.st)
+    s.holder <- attr(output, "s.store")
+    prob.state <- cbind(sapply(1:ns, function(k){apply(s.holder == k, 2, mean)}))
+    yhat <- apply(mu.st.state*prob.state, 1, sum)
+
+    state <- round(apply(s.holder, 2, mean))
+    cat("estiamted states are ", table(state), "\n")
+    ## Following P. Richard HAHN and Carlos M. CARVALHO (Eq. 21)
+    raw.y.list <- y.list <- x.list <- as.list(rep(NA, ns))
+    ## raw.y.list.0 <- y.list.0 <- x.list.0 <- as.list(rep(NA, n.state))
+    for(i in 1:ns){
+        x.list[[i]] <- X[state==i, ]
+        y.list[[i]] <- yhat[state==i]
+        raw.y.list[[i]] <- y[state==i]   
+        cat("y and yhat correlation is ", cor(y.list[[i]], raw.y.list[[i]]), "\n")
+   }
+    
+    
+    ## compute
+    ## Variable selection using adaptive lasso
+    hybrid.dss <- sapply(1:ns, function(i){adaptive.lasso(y.list[[i]], x.list[[i]], beta.hat = beta.st[i,])})
+    rownames(hybrid.dss) <- colnames(X)
+    colnames(hybrid.dss) <- paste0("Regime", 1:ns)
+    
+    ## hybrid.cp <- sapply(1:ns, function(i){adaptive.lasso(raw.y.list[[i]], x.list[[i]], beta.hat = beta.st[i,])})
+    ## rownames(hybrid.cp) <- colnames(X)
+    ## colnames(hybrid.cp) <- paste0("Regime", 1:ns)
+    ## out <- list(hybrid.dss, hybrid.cp)
+    ## names(out) <- c("hybrid", "hybrid.raw")
+    return(hybrid.dss)
+}
+
+dss.panel <- function(output, data, formula, index, model, effect, standardize=TRUE, interaction=1){
+
+    ## output <- as.cp0[[2]]
+    pdata <- pdata.frame(data, index = index, drop.index = F)
+    X <- plm:::model.matrix.pFormula(formula, pdata, rhs = 1, model = model, effect = effect)
+    y <- plm:::pmodel.response(formula, pdata, model = model, effect = effect)
+
+    
+    plm.index <- attr(X,"index")
+    if(model=="pooling"){
+        X <- X[,-1]
+    }
+    plmX <- X
+    plmy <- y
+ 
+    ## if(interaction & !allway.interaction){
+    ##     x1.1 <- data.frame(X)
+    ##     var.names <- colnames(X)
+    ##     x1.2 <- matrix(t(apply(x1.1, 1, combn, 2, prod)), nrow = nrow(X))
+    ##     newX <- as.matrix(cbind(x1.1, x1.2))
+    ##     colnames(newX) <- c(var.names, combn(var.names, 2, paste, collapse="-"))
+    ##     X <- newX
+    ## }
+    interaction <- min(ncol(plmX), interaction)
+    if(interaction>1){
+        newX <- list()
+        newX[[1]] <- X
+        x1.1 <- data.frame(X)
+        var.names <- colnames(X)
+        for(j in 2:interaction){
+            x1.2 <- matrix(t(apply(x1.1, 1, combn, j, prod)), nrow = nrow(X))
+            newX[[j]] <- as.matrix(x1.2)
+            colnames(newX[[j]]) <- c(combn(var.names, j, paste, collapse="-"))
+        }
+        X <- Reduce(cbind, newX)
+        ## Drop covariates with all zero
+        if(sum(apply(X, 2, sd) == 0)>0){
+            cat("Some interactions (", sum(apply(X, 2, sd) == 0) , ") are all zero. So they are removed!\n")
+            X <- X[, apply(X, 2, sd)!=0]
+        }
+
+    }
+
+    
+    if (standardize) {
+        ysd <- sd(y)
+        Xsd <- apply(X, 2, sd)
+        ## if Xsd is exactly 0, use 1.
+        ## Xsd <- ifelse(Xsd == 0, 1, Xsd)
+        dat.sd <- c(ysd, Xsd)
+        X <- scale(X)
+        y <- scale(as.vector(y))
+        data[, colnames(X)] <- X
+        data[, all.vars(formula)[1]] <- y
+        pdata <- pdata.frame(data, index = index, drop.index = F)
+        
+    }
+    
+    
+    subject.id <- as.numeric(as.factor(data[,index[1]]))
+    time.id    <- as.numeric(as.factor(data[,index[2]]))
+
+    fit <- plm(formula, data = pdata, model=model, effect=effect)
+  
+    ## compute residual
+    beta.out.shrink <- output[, grep("beta", colnames(output))]
+    K <- ncol(X)
+    ns <- attr(output, "m") + 1
+    beta.st   <- matrix(apply(beta.out.shrink, 2, mean), ns, K, byrow=TRUE)
+    mu.st.state <- X %*% t(beta.st)
+    s.holder <- attr(output, "s.store")
+    prob.state <- cbind(sapply(1:ns, function(k){apply(s.holder == k, 2, mean)}))
+    prob.state.mat <- prob.state[time.id,]
+    yhat <- apply(mu.st.state*prob.state.mat, 1, sum)
+    ## state.indicator <- state[time.id]
+    ## yhat <- sapply(1:length(y), function(tt){mu.st.state*prob.state[tt,state.indicator[tt]]})
+
+    plm.index <- attr(X,"index")
+
+    unique.time.index <- unlist(sort(unique(plm.index[,2])))
+    n.state <- length(unique(state))
+    raw.y.list <- y.list <- x.list <- as.list(rep(NA, n.state))
+
+    for(i in 1:n.state){
+        
+        dat.x <- data.frame(X[ is.element(plm.index[,2], unique.time.index[state==i]), ])
+        dat.y <- data.frame(yhat[ is.element(plm.index[,2], unique.time.index[state==i])])
+        raw.y <- data.frame(y[ is.element(plm.index[,2], unique.time.index[state==i])])
+        
+   
+        if(sum(state==i) == 1){
+            dat.id <- subject.id[is.element(plm.index[,2], unique.time.index[state==i])]
+            x.list[[i]] <- as.matrix(dat.x)
+            y.list[[i]] <- as.matrix(dat.y[[1]])
+            raw.y.list[[i]] <- as.matrix(raw.y[[1]])
+        }else{
+            if(effect == "time"){
+                dat.id <- time.id[is.element(plm.index[,2], unique.time.index[state==i])]
+                x.list[[i]] <- as.matrix(group.center(dat.x, dat.id))
+                y.list[[i]] <- as.matrix(group.center(dat.y, dat.id))
+                raw.y.list[[i]] <- as.matrix(group.center(raw.y, dat.id))
+                
+            }else{
+                dat.id <- subject.id[is.element(plm.index[,2], unique.time.index[state==i])]
+                x.list[[i]] <- as.matrix(group.center(dat.x, dat.id))
+                y.list[[i]] <- as.matrix(group.center(dat.y, dat.id))
+                raw.y.list[[i]] <- as.matrix(group.center(raw.y, dat.id))
+            }
+        }
+    }
+    ## compute
+    hybrid.dss <- sapply(1:n.state, function(i){adaptive.lasso(y.list[[i]], x.list[[i]], beta.hat = beta.st[i,])})
+    rownames(hybrid.dss) <- colnames(X)
+    colnames(hybrid.dss) <- paste0("Regime", 1:n.state)
+    
+    ## hybrid.cp <- sapply(1:ns, function(i){adaptive.lasso(raw.y.list[[i]], x.list[[i]], beta.hat = beta.st[i,])})
+    ##  rownames(hybrid.cp) <- colnames(X)
+    ## colnames(hybrid.cp) <- paste0("Regime", 1:ns)
+    ## out <- list(hybrid.dss, hybrid.cp)
+    ## names(out) <- c("hybrid", "hybrid.raw")
+    return(hybrid.dss)
+}
+
+
+
+
 ## summarize only selected dss shrinkage output
 all.zero <- function(x){sum(x) + prod(x) == 0}
 summary.dss <- function(output, variable.names=TRUE){
@@ -297,7 +461,9 @@ dotplotRegime <- function(out, hybrid=TRUE, start, cex=1,
         rownames(coef) <- colnames(X)     
     }
     ## if both regime estimates are zero, drop them.
-    coef <- coef[-which(apply(coef, 1, prod) + apply(coef, 1, sum) == 0),]
+    if(sum(apply(coef, 1, prod) + apply(coef, 1, sum) == 0)>0){
+        coef <- coef[-which(apply(coef, 1, prod) + apply(coef, 1, sum) == 0),]
+    }
     if(!is.null(select)){
         if(length(grep(select, rownames(coef))) == 1){
             coefs <-  matrix(coef[ grep(select, rownames(coef)), ], 1, m+1)
@@ -305,6 +471,8 @@ dotplotRegime <- function(out, hybrid=TRUE, start, cex=1,
         }else{
             coefs <- coef[grep(select, rownames(coef)),]
         }
+    }else{
+        coefs <- coef
     }
     coef.mat <- matrix(NA, nrow=nrow(coefs), ncol=length(unique.time.index))
     for(i in 1:nrow(coefs)){

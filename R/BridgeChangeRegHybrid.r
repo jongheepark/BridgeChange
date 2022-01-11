@@ -391,7 +391,11 @@
     ## compute residual
     beta.st   <- matrix(apply(betadraws, 2, mean), ns, K, byrow=TRUE)
     mu.st.state <- X %*% t(beta.st)
-    yhat <- sapply(1:ntime, function(t){c(mu.st.state[t, state[t]] + beta0[state[t]])})
+    yhat.mat <- X%*%t(beta.st)
+    prob.state <- cbind(sapply(1:ns, function(k){apply(sdraws == k, 2, mean)}))
+    yhat <- apply(yhat.mat*prob.state, 1, sum)
+    
+    ## yhat <- sapply(1:ntime, function(t){c(mu.st.state[t, state[t]] + beta0[state[t]])})
     resid <- ydm - yhat
     Waic.out <- NULL
     if (isTRUE(marginal)) {
@@ -444,11 +448,11 @@
         
         output1 <- coda::mcmc(data=betadraws, start=burn+1, end=burn + mcmc, thin=thin)
         output2 <- coda::mcmc(data=sigmadraws, start=burn+1, end=burn + mcmc, thin=thin)
-        output4 <- coda::mcmc(data=lambdadraws, start=burn+1, end=burn + mcmc, thin=thin)
+        lambda.out <- coda::mcmc(data=lambdadraws, start=burn+1, end=burn + mcmc, thin=thin)
         
         colnames(output1)  <- sapply(c(1:ns), function(i) { paste(xnames, "_regime", i, sep = "") })
         colnames(output2)  <- sapply(c(1:ns), function(i) { paste("sigma2_regime", i, sep = "") })
-        colnames(output4)  <- sapply(c(1:ns), function(i) { paste(lnames, "_regime", i, sep = "") })
+        colnames(lambda.out)  <- sapply(c(1:ns), function(i) { paste(lnames, "_regime", i, sep = "") })
         
         output    <- as.mcmc(cbind(output1, output2))
         ps.holder <- matrix(ps.store, ntime, ns)
@@ -460,8 +464,8 @@
     ## ---------------------------------------------------- ##
     ##  ninv.y <- 1/length(y)
     if(n.break > 0){
-        state <- round(apply(s.holder, 2, mean))
-        cat("estiamted states are ", table(state), "\n")
+        state <- round(apply(sdraws, 2, mean))
+        cat("\nEstiamted states are ", table(state), "\n")
         ## Following P. Richard HAHN and Carlos M. CARVALHO (Eq. 21)
         raw.y.list <- y.list <- x.list <- as.list(rep(NA, ns))
         ## raw.y.list.0 <- y.list.0 <- x.list.0 <- as.list(rep(NA, n.state))
@@ -482,7 +486,7 @@
                 hybrid.cp <- sapply(which(lapply(y.list, length)>=regime.duration.min),
                                   function(i){adaptive.lasso.olsweight(raw.y.list[[i]], x.list[[i]])})
                 rownames(hybrid.cp) <- colnames(X)
-                colnames(hybrid.cp) <- paste0("Regime", which(lapply(y.list, length)>=regime.duration.min))
+                colnames(hybrid.cp) <- paste0("Regime", which(lapply(raw.y.list, length)>=regime.duration.min))
             }else{
                 hybrid.dss <- sapply(which(lapply(y.list, length)>=regime.duration.min),
                                     function(i){adaptive.lasso(y.list[[i]], x.list[[i]], beta.hat = beta.st[i,])})
@@ -492,7 +496,7 @@
                 hybrid.cp <- sapply(which(lapply(y.list, length)>=regime.duration.min),
                                   function(i){adaptive.lasso(raw.y.list[[i]], x.list[[i]], beta.hat = beta.st[i,])})
                 rownames(hybrid.cp) <- colnames(X)
-                colnames(hybrid.cp) <- paste0("Regime", which(lapply(y.list, length)>=regime.duration.min))
+                colnames(hybrid.cp) <- paste0("Regime", which(lapply(raw.y.list, length)>=regime.duration.min))
 
             }
                 
@@ -551,10 +555,10 @@
     attr(output, "alpha")   <- coda::mcmc(data=alphadraws, start=burn+1, end=burn + mcmc, thin=thin)
     attr(output, "tau")     <- coda::mcmc(data=taudraws, start=burn+1, end=burn + mcmc, thin=thin)
     if (n.break > 0){
-        attr(output, "s.store") <- s.holder
-        prob.state <- cbind(sapply(1:ns, function(k){apply(s.holder == k, 2, mean)}))
+        attr(output, "s.store") <- sdraws
+        prob.state <- cbind(sapply(1:ns, function(k){apply(sdraws == k, 2, mean)}))
         attr(output, "prob.state") <- prob.state
-        attr(output, "lambda") <- output4
+        attr(output, "lambda") <- lambda.out
     }
     attr(output, "Waic.out") <- Waic.out
     if(marginal){
