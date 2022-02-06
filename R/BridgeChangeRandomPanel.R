@@ -4,18 +4,16 @@
 ## by JHP "Wed Oct 19 15:13:47 2016"
 ######################################################################################################
 
-#' Sparse Change Point Model with Fixed Effect
+#' Sparse Change Point Model with Random Effect
 #'
 #' @param fomula Inherited from \code{lm}. For example, \code{Y ~ X + Z}.
 #' @param data Data.frame object.
 #' @param index
 #' String vector for unit and time index variables.
 #' For example, \code{index = c("unit", "year")}.
-#' @param model Model (\code{c("within","between", "pooling")}).
-#' @param effect Effect (\code{c("individual", "time", "twoways")}).
 #' @param interaction If interaction = 1, no interaciton. If interaction = 2, only two-way interaciton. Interaction can be up to K, which is the rank of the model matrix. 
 #' @param n.break Number of breaks.
-#' If \code{n.break = 0}, it simply runs fixed effect model with shrinkage prior on coefficients.
+#' If \code{n.break = 0}, it simply runs random effect model with shrinkage prior on coefficients.
 #' @param burnin The number of burn-in iterations for the sampler.
 #'
 #' @param mcmc The number of MCMC iterations after burn-in.
@@ -32,6 +30,8 @@
 #' @param alpha.MH  If \code{TRUE}, alpha is updated by MH algorithm. By default, it is updated by griddy gibbs.
 #' @param c0 Hyperparam
 #' @param d0 = 0.1
+#' @param r0 = 1
+#' @param R0 = 1
 #' @param nu.shape =2.0
 #' @param nu.rate =2.0
 #' @param alpha  = 1
@@ -46,24 +46,22 @@
 #'   is the sample period divided by the number of states.
 
 #'
-#'
 #' @author Jong Hee Park, and Soichiro Yamauchi \email{syamauchi@princeton.edu}
 #' @importFrom plm pmodel.response
 #' @importFrom utils getFromNamespace
-#' @example examples/fixed_panel_eg.R
+#' @example examples/random_panel_eg.R
 
 #' 
 #' @export
 #' 
-BridgeFixedPanel <- function(formula, data, index, model, effect,
-                             standardize = TRUE,
-                             interaction = 1,
-                             a = NULL, b = NULL,
-                             n.break = 1, alpha.MH = FALSE,
-                             mcmc = 100, burn = 100, verbose = 100, thin = 1,
-                             b0=0, B0=1, c0 = 0.1, d0 = 0.1, r0 =  1, R0 = 1,
-                             nu.shape = 2.0, nu.rate = 2.0, alpha = 1,
-                             Waic = FALSE, marginal = FALSE) {
+BridgeRandomPanel <- function(formula, data, random=NULL, index, 
+                              standardize = TRUE,
+                              interaction = 1, a = NULL, b = NULL,
+                              n.break = 1, alpha.MH = FALSE,
+                              mcmc = 100, burn = 100, verbose = 100, thin = 1,
+                              b0=0, B0=1, c0 = 0.1, d0 = 0.1, r0 =  1, R0 = 1,
+                              nu.shape = 2.0, nu.rate = 2.0, alpha = 1,
+                              Waic = FALSE, marginal = FALSE) {
     call <- match.call()
     
     
@@ -74,20 +72,32 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
     ## use plm package here
     ## transform data int pdata.frame object
     ## ---------------------------------------------------- ##
-    # if (standardize) {
-    #     dat.sd <- apply(data[, !(colnames(data) %in% index)], 2, sd)
+                                        # if (standardize) {
+                                        #     dat.sd <- apply(data[, !(colnames(data) %in% index)], 2, sd)
     #     data <- data.frame(cbind(scale(data[, !(colnames(data) %in% index)]), data[,index]))
     # }
+
+    holder <- MCMCpack:::parse.formula(formula, data = data)
+    Y <- holder[[1]]
+    X <- holder[[2]][,-1]
+    if(is.null(random)){
+        W <- matrix(1, nrow(X), 1)
+    }else{
+        if(sum(!is.element(random, colnames(X)))>0){
+            stop("X does not contain all of the random effect covariates!\n")
+        }else{
+            W <- as.matrix(X[, random], nrow(X), length(random))
+        }
+    }
+    ## ssuppressWarnings(pdata    <- pdata.frame(data, index))
+    ## ssuppressWarnings(pformula <- pFormula(formula))
     
-    suppressWarnings(pdata    <- pdata.frame(data, index))
-    suppressWarnings(pformula <- pFormula(formula))
-    
-    suppressWarnings(X <- plm:::model.matrix.pFormula(pformula, pdata, rhs = 1, model = model, effect = effect))
-    suppressWarnings(y <- plm:::pmodel.response(pformula, pdata, model = model, effect = effect))
+    ## suppressWarnings(X <- plm:::model.matrix.pFormula(pformula, pdata, rhs = 1, model = model, effect = effect))
+    ## suppressWarnings(y <- plm:::pmodel.response(pformula, pdata, model = model, effect = effect))
 
     unscaled.Y <- y
     unscaled.X <- X
-
+        
     if (standardize) { 
         ysd <- sd(y)
         Xsd <- apply(X, 2, sd)
@@ -101,7 +111,7 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
     m <- n.break
     #     
     
-    W <- matrix(0, length(y), 1)
+    ## W <- matrix(0, length(y), 1)
     
     interaction <- min(ncol(X), interaction)
     if(interaction>1){
@@ -128,14 +138,22 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
     ## ---------------------------------------------------- ##
     ## run change point model on demeaned data
     ## ---------------------------------------------------- ##
-    output <- BridgeMixedPanel(subject.id = subject.id, time.id = time.id, y=as.vector(y), X=X, W=W,
-                               n.break = n.break, b0=b0, B0=B0, c0=c0, d0=d0, r0=r0, R0=R0,
-                               standardize = FALSE, alpha.MH = alpha.MH, 
-                               mcmc = mcmc, burn = burn, thin = thin, verbose=verbose, 
-                               nu.shape = 2.0, nu.rate = 2.0, alpha = 1, Waic = Waic, marginal = marginal, fixed = TRUE,
+    output <- BridgeMixedPanel(subject.id = subject.id, time.id = time.id, n.break = n.break, 
+                               mcmc = mcmc, burn = burn, thin = thin, verbose = verbose,
+                               y = as.vector(y),  X = X, W = W, standardize = FALSE, alpha.MH = alpha.MH, 
+                               b0 = b0, B0 = B0, r0 = r0, R0 = R0, c0=c0, d0=d0,
+                               nu.shape = 2.0, nu.rate = 2.0, alpha = 1, Waic = Waic, marginal = marginal, 
                                unscaled.Y = unscaled.Y, unscaled.X = unscaled.X)
 
-    attr(output, "title")  <- "BridgeChangeFixedPanel Posterior Sample"
+    
+    ## output <- BridgeMixedPanel(subject.id = subject.id, time.id = time.id, y=as.vector(y), X=X, W=W,
+    ##                            n.break = n.break, b0=b0, B0=B0, c0=c0, d0=d0, r0=r0, R0=R0,
+    ##                            standardize = FALSE, alpha.MH = alpha.MH, 
+    ##                            mcmc = mcmc, burn = burn, thin = thin, verbose=verbose, 
+    ##                            nu.shape = 2.0, nu.rate = 2.0, alpha = 1, Waic = Waic, marginal = marginal, random = TRUE,
+    ##                            unscaled.Y = unscaled.Y, unscaled.X = unscaled.X)
+
+    attr(output, "title")  <- "BridgeChangeRandomPanel Posterior Sample"
     attr(output, "m")      <- n.break
     if(standardize) attr(output, "dat.sd") <- dat.sd
     # attr(output, "plm")     <- pm

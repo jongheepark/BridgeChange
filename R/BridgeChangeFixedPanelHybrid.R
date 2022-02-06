@@ -66,11 +66,13 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
     #     data <- data.frame(cbind(scale(data[, !(colnames(data) %in% index)]), data[,index]))
     # }
 
-    pdata    <- pdata.frame(data, index)
-    pformula <- pFormula(formula)
+    suppressWarnings(pdata    <- pdata.frame(data, index))
+    suppressWarnings(pformula <- pFormula(formula))
 
-    X <- plm:::model.matrix.pFormula(pformula, pdata, rhs = 1, model = model, effect = effect)
-    y <- plm:::pmodel.response(pformula, pdata, model = model, effect = effect)
+    suppressWarnings(X <- plm:::model.matrix.pFormula(pformula, pdata, rhs = 1, model = model, effect = effect))
+    suppressWarnings(y <- plm:::pmodel.response(pformula, pdata, model = model, effect = effect))
+    ns <- n.break + 1
+
 
     plm.index <- attr(X,"index")
     if(model=="pooling"){
@@ -148,41 +150,38 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
     if(n.break > 0){
         state <- round(apply(attr(output, "s.store"), 2, mean))
         cat("estiamted states are ", table(state), "\n")
-        beta.mean <- matrix(apply(output, 2, mean)[grepl("beta", colnames(output))], ncol(X), n.break+1) ## K by ns
-        s2.mean <- matrix(apply(output, 2, mean)[grepl("sigma", colnames(output))], , n.break+1) ## 1 by ns
+        beta.mean <- matrix(apply(output, 2, mean)[grepl("beta", colnames(output))], ncol(X), ns) ## K by ns
+        s2.mean <- matrix(apply(output, 2, mean)[grepl("sigma", colnames(output))], , ns) ## 1 by ns
         yhat.state <- X%*%beta.mean
         ## yhat.state <- yhat.state - mean(yhat.state)
         state.indicator <- state[time.id]
 
         ## yhat recompute using prob.state
-        yhat.mat <- X%*%beta.mean
-        prob.state <- cbind(sapply(1:ns, function(k){apply(attr(output, "s.store") == k, 2, mean)}))
-        yhat <- apply(yhat.mat*prob.state, 1, sum)
+        ## yhat.mat <- X%*%beta.mean
+        ## prob.state <- cbind(sapply(1:ns, function(k){apply(attr(output, "s.store") == k, 2, mean)}))
+        ## yhat <- apply(yhat.mat*prob.state, 1, sum)
 
         ## Following P. Richard HAHN and Carlos M. CARVALHO (Eq. 21)
-        ## yhat <- sapply(1:length(y), function(tt){yhat.state[tt,state.indicator[tt]]})
+        yhat <- sapply(1:length(y), function(tt){yhat.state[tt,state.indicator[tt]]})
         unique.time.index <- sort(unique(plm.index[,2]))
         n.state <- length(unique(state))
         raw.y.list <- y.list <- x.list <- as.list(rep(NA, n.state))
         ## raw.y.list.0 <- y.list.0 <- x.list.0 <- as.list(rep(NA, n.state))
         for(i in 1:n.state){
-             ## group centering muted if pooling
+            dat.x <- data.frame(X[ is.element(plm.index[,2],  unique.time.index[state==i]), ])
+            dat.y <- data.frame(yhat.state[ is.element(plm.index[,2], unique.time.index[state==i]), i])
+            raw.y <- data.frame(y[ is.element(plm.index[,2], unique.time.index[state==i])])
+            ## group centering muted if pooling
             if(model == "pooling"){
-                dat.x <- data.frame(X[ is.element(plm.index[,2], unique.time.index[state==i]), ])
-                dat.y <- data.frame(yhat[ is.element(plm.index[,2], unique.time.index[state==i])])
-                raw.y <- data.frame(y[ is.element(plm.index[,2], unique.time.index[state==i])])
                 dat.id <- subject.id[is.element(plm.index[,2], unique.time.index[state==i])]
                 x.list[[i]] <- as.matrix(dat.x)
                 y.list[[i]] <- as.matrix(dat.y)
+                ## yhat.list[[i]] <- x.list[[i]]%*%beta.mean 
                 raw.y.list[[i]] <- as.matrix(raw.y)
  
             }else{
                 ## x.list[[i]] <- X[ is.element(plm.index[,2], unique.time.index[state==i]), ]
                 ## augmenting data frame with cluster-mean centered variables
-                dat.x <- data.frame(X[ is.element(plm.index[,2], unique.time.index[state==i]), ])
-                dat.y <- data.frame(yhat[ is.element(plm.index[,2], unique.time.index[state==i])])
-                raw.y <- data.frame(y[ is.element(plm.index[,2], unique.time.index[state==i])])
-
                 if(sum(state==i) == 1){
                     dat.id <- subject.id[is.element(plm.index[,2], unique.time.index[state==i])]
                     x.list[[i]] <- as.matrix(dat.x)
@@ -282,14 +281,16 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
             dat.id <- subject.id
             ## cat("y and yhat correlation is ", cor(yhat, y), "\n")
 
-            ## group centering
+            ## group centering if effect is not within
             if(model == "pooling"){
                 dat.x <- as.matrix(X)
                 dat.y <- as.matrix(yhat)
             }else{
                 if(effect == "time"){
                     dat.id <- time.id
-                }else{
+                    dat.x <- as.matrix(X)
+                    dat.y <- as.matrix(yhat)
+              }else{
                     dat.x <- as.matrix(group.center(X, dat.id))
                     dat.y <- as.matrix(group.center(matrix(yhat), dat.id))
                 }
@@ -329,6 +330,7 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
     attr(output, "hybrid.raw") <- hybrid.cp
     if(sparse.only){
     }else{
+        ##  attr(output, "beta.varying")
         attr(output, "R2") <- list("R2.DSS" = R2.DSS, "R2.CP" = R2.CP)
         attr(output, "R2.jhp") <- list("R2.DSS" = R2.DSS.jhp, "R2.CP" = R2.CP.jhp)
         if(n.break>0){
@@ -336,6 +338,7 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
         }else{
             attr(output, "R2.total") <- list("R2.DSS" = R2.DSS.jhp, "R2.CP" = R2.CP.jhp)
         }
+        
     }
     attr(output, "title")  <- "BridgeChangeFixedPanelHybrid Posterior Sample"
     attr(output, "m")      <- n.break

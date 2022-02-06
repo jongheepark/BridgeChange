@@ -428,91 +428,6 @@ adaptive.lasso2 <- function(y, x){
 }
 
 
-## hybrid
-## location.bar is the x location of the legend starting
-## select = grep coefficients containing a string
-## hybrid=TRUE and raw=TRUE, use original y for variable selection
-## hybrid=TRUE and raw=FALSE, use yhat for variable selection
-## order = k : Order the transparency of coefficients based on regime k. The default is k=1. 
-dotplotRegime <- function(out, hybrid=TRUE, start, cex=1,
-                          x.location=c("random", "legend", "default"),
-                          order.state = 1, location.bar=9,
-                          text.cex=1, legend.position = "topright", pos=1, ## below default, 3 above
-                          select=NULL, main="", raw=FALSE){
-    if(attr(out, "m") == 0){
-        state <- rep(1, length(attr(out, "y")))
-    }else{
-        state <- round(apply(attr(out, "s.store"), 2, mean))
-    }
-    unique.time.index <- start : (start + length(state) - 1)
-    m <- attr(out, "m")
-    X <- attr(out, "X")
-    k <- dim(X)[2]
-    if(hybrid){
-        if(raw){
-            coef <- attr(out, "hybrid.raw")
-        }else{
-            coef <- attr(out, "hybrid")
-        }
-    }else{
-        ### coefs <- summary(out)[[1]][,1]
-        beta.target <- out[, grepl("beta", colnames(out))]
-        coef <- matrix(apply(beta.target, 2, mean), k, m+1)
-        rownames(coef) <- colnames(X)     
-    }
-    ## if both regime estimates are zero, drop them.
-    if(sum(apply(coef, 1, prod) + apply(coef, 1, sum) == 0)>0){
-        coef <- coef[-which(apply(coef, 1, prod) + apply(coef, 1, sum) == 0),]
-    }
-    if(!is.null(select)){
-        if(length(grep(select, rownames(coef))) == 1){
-            coefs <-  matrix(coef[ grep(select, rownames(coef)), ], 1, m+1)
-            rownames(coefs) <- rownames(coef)[grep(select, rownames(coef))]
-        }else{
-            coefs <- coef[grep(select, rownames(coef)),]
-        }
-    }else{
-        coefs <- coef
-    }
-    coef.mat <- matrix(NA, nrow=nrow(coefs), ncol=length(unique.time.index))
-    for(i in 1:nrow(coefs)){
-        coef.mat[i,] <- coefs[i, state]
-    }
-    require(colorspace)
-    if(nrow(coef.mat) == 1){
-        col.scheme <- "brown"
-    }else{
-        col.scheme <- diverge_hcl(nrow(coefs), h=c(255, 330), l = c(40, 90))
-        col.scheme <- col.scheme[rank(coefs[, order.state])]
-    }
-    ## par (mar=c(3,3,2,4), mgp=c(2,.7,0), tck=-.01)
-    plot(unique.time.index, coef.mat[1,], xlab="time", ylab="coefficients", bty='n', main=main,
-         ylim=range(coefs), type="o", pch=19, cex=cex, col=addTrans(col.scheme[1], 100))
-    if(nrow(coef.mat)>1){
-        for(i in 2:nrow(coefs)){
-            points(unique.time.index, coef.mat[i,], pch=19, cex=cex, col=addTrans(col.scheme[i], 100))
-            lines(unique.time.index, coef.mat[i,], lwd=0.8, col=col.scheme[i])
-        }
-    }
-    ## grid(col="grey80")
-    if(x.location=="random"){
-        n.coef <- length(rownames(coefs))
-        x.location.pos <- sample((min(unique.time.index)+location.bar):(max(unique.time.index)-2), n.coef, replace=TRUE)
-        text(x = x.location.pos, coef.mat[, length(unique.time.index)], rownames(coefs), cex=text.cex, col=col.scheme,
-             pos=pos)
-    }else if(x.location=="legend"){
-        legend(legend.position, legend=rownames(coefs), col=addTrans(col.scheme, 100), pch=19, bty="n",
-               cex=0.8,lty=1:1, lwd=1, y.intersp = 0.8)
-    }else{
-        text(x = max(unique.time.index)-2, coef.mat[, length(unique.time.index)], pos=pos, 
-             rownames(coefs), col=col.scheme,
-             cex=text.cex)
-    }
-    ## title("Regime-changing coefficients", adj = 0, line = 0)
-    box(); 
-}
-
-
 sim <- function(mcmc=1000, burn=1000, thin=1,
                 t_time= c(20, 40, 60), n_unit = c(10), 
                 k_cov = c(3,  5,  7), 
@@ -900,18 +815,30 @@ WaicCompare <- function(outlist, print = TRUE){
     N.model <- length(outlist)
     breaks <- lapply(outlist, attr, "m")
     outl <- lapply(outlist, attr, "Waic.out")
-    outm <- matrix(unlist(outl), N.model, 8, byrow=TRUE)
-    out <- matrix(outm[,1], 1, N.model)
-    colnames(out) <- paste0("break ", breaks)
+    out <- Reduce(bind_rows, outl)
+    out$model<- paste0("break ", breaks)
+    ## outm <- matrix(unlist(outl), N.model, 8, byrow=TRUE)
+    ## out <- matrix(outm[,1], 1, N.model)
+    ## colnames(out) <- paste0("break ", breaks)
     
     if(isTRUE(print)) {
       cat("\n")
-      cat("Selected model = break", unlist(breaks)[which.min(out[1,])],'\n')        
+      cat("Selected model = break", unlist(breaks)[which.min(out$waic)],'\n')        
       cat("\n")
-      print.default(out[1,], quote = FALSE, digit = 5)
+      print.default(out$waic, quote = FALSE, digit = 5)
     }
     return(out)
 }
+
+#' Draw a plot of WAIC 
+#' @param waic WaicCompare output
+#' @return R base plot
+plotWaic <- function(out, xlab="Model", ylab="WAIC", main="WAIC Comparison"){
+    plot(out$waic, type="o", axes=FALSE, xlab=xlab, ylab=ylab, main=main, pch=19)
+    axis(2)
+    axis(1, at=1:3, labels=out$model)
+}
+
 MarginalCompare <- function(outlist){
     N.model <- length(outlist)
     breaks <- lapply(outlist, attr, "m")
@@ -920,6 +847,7 @@ MarginalCompare <- function(outlist){
     colnames(out) <- paste0("break ", breaks)
     return(out)
 }
+
 mse <- function(x, y=NULL){
     if(is.null(y)){
         sum((x-mean(x))^2)
@@ -1988,3 +1916,5 @@ estimate_intercept_reg <- function(y, Xorig, beta, n.break, intercept, state) {
   }
   return(beta0)
 }
+
+

@@ -24,9 +24,13 @@
 #' @return output
 #'
 #' @export
-BridgeChangeSim <- function(ntime=500, predictor = 100, rho=0, time.series=FALSE, sign.change.tune = 2, sigma1=1, sigma2 = 2, train.ratio=0.5,
-                            fitted.mse = TRUE, constant.p =0.1, varying.p = 0.2, break.point = 0.5, positive.jump=FALSE, n.break = 1, intercept=FALSE,
-                            positive.jump.tune = 1, mcmc = 100, burn = 100, verbose = 100, thin = 1, N=1, known.alpha = FALSE,
+BridgeChangeSim <- function(ntime=500, predictor = 100, rho=0, time.series=FALSE,
+                            standardize = TRUE, 
+                            sign.change.tune = 2, sigma1=1, sigma2 = 2, train.ratio=0.5,
+                            fitted.mse = TRUE, constant.p =0.1, varying.p = 0.2,
+                            break.point = 0.5, positive.jump=FALSE, n.break = 1, intercept=FALSE,
+                            positive.jump.tune = 1, mcmc = 100,
+                            burn = 100, verbose = 100, thin = 1, N=1, known.alpha = FALSE,
                             dgp.only=FALSE){
     ## turn off warnings
     ## options(warn=-1)
@@ -63,7 +67,8 @@ BridgeChangeSim <- function(ntime=500, predictor = 100, rho=0, time.series=FALSE
         }
         ## sigma <- riwish(P1+(1-rho)*P1, diag(P1)); image(sigma, main="Correlation Matrix")
         L = chol(R1)
-        x <- t(t(L) %*% matrix(rnorm(ntime*predictor), nrow=predictor, ncol=ntime)) ## rmvnorm(ntime, rep(0, predictor), sigma=R1) ## matrix(rnorm(n*p), nrow=n, ncol=p)
+        x <- t(t(L) %*% matrix(rnorm(ntime*predictor), nrow=predictor, ncol=ntime))
+        ## rmvnorm(ntime, rep(0, predictor), sigma=R1) ## matrix(rnorm(n*p), nrow=n, ncol=p)
         ## image(cor(x))
         ## x2 <- matrix(rnorm(T*P2), nrow=T, ncol=P2)
         ## x <- cbind(x1, x2)
@@ -75,59 +80,101 @@ BridgeChangeSim <- function(ntime=500, predictor = 100, rho=0, time.series=FALSE
         }else{
             permute <- sample(1:predictor, replace=FALSE)
             ## very small values for sparsity
-            true.beta <- c(rnorm(cons.predictor, 0, 2), rep(0, predictor - cons.predictor))[permute]
+            true.beta <- c(rnorm(cons.predictor, 0, 2),
+                           rep(0, predictor - cons.predictor))[permute]
             y <- x %*% true.beta + rnorm(ntime, 0, sigma1)
         }
     }else{
         if(cons.predictor > 1){
             if(positive.jump){ ## positive jump change
                 y[1:cut] <- apply(x[1:cut, 1:cons.predictor], 1, sum) +
-                    apply(sign.change.tune*x[1:cut, (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) + rnorm(cut, 0, sigma1)
+                    apply(sign.change.tune*x[1:cut, (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) +
+                    rnorm(cut, 0, sigma1)
                 y[(cut+1):ntime] <- apply(x[(cut+1):ntime, 1:cons.predictor], 1, sum) +
-                    apply(positive.jump.tune + sign.change.tune*x[(cut+1):ntime, (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) + rnorm(ntime - cut, 0, sigma2)
-                true.beta[1, ] <- c(rep(1, cons.predictor), rep(sign.change.tune, vary.predictor), rep(0, predictor - vary.predictor - cons.predictor))
-                true.beta[2, ] <- c(rep(1, cons.predictor), rep(positive.jump.tune + sign.change.tune, vary.predictor), rep(0, predictor - vary.predictor - cons.predictor))
+                    apply(positive.jump.tune + sign.change.tune*x[(cut+1):ntime,
+                    (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) +
+                    rnorm(ntime - cut, 0, sigma2)
+                true.beta[1, ] <- c(rep(1, cons.predictor),
+                                    rep(sign.change.tune, vary.predictor),
+                                    rep(0, predictor - vary.predictor - cons.predictor))
+                true.beta[2, ] <- c(rep(1, cons.predictor),
+                                    rep(positive.jump.tune + sign.change.tune, vary.predictor),
+                                    rep(0, predictor - vary.predictor - cons.predictor))
             }else{ ## sign change only
                 y[1:cut] <- apply(x[1:cut, 1:cons.predictor], 1, sum) +
-                    apply(sign.change.tune*x[1:cut, (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) + rnorm(cut, 0, sigma1)
+                    apply(sign.change.tune*x[1:cut, (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) +
+                    rnorm(cut, 0, sigma1)
                 y[(cut+1):ntime] <- apply(x[(cut+1):ntime, 1:cons.predictor], 1, sum) +
-                    apply(-sign.change.tune*x[(cut+1):ntime, (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) + rnorm(ntime - cut, 0, sigma2)
-                true.beta[1, ] <- c(rep(1, cons.predictor), rep(sign.change.tune, vary.predictor), rep(0, predictor - vary.predictor - cons.predictor))
-                true.beta[2, ] <- c(rep(1, cons.predictor), rep(-sign.change.tune, vary.predictor), rep(0, predictor - vary.predictor - cons.predictor))
+                    apply(-sign.change.tune*x[(cut+1):ntime, (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) +
+                    rnorm(ntime - cut, 0, sigma2)
+                true.beta[1, ] <- c(rep(1, cons.predictor), rep(sign.change.tune, vary.predictor),
+                                    rep(0, predictor - vary.predictor - cons.predictor))
+                true.beta[2, ] <- c(rep(1, cons.predictor), rep(-sign.change.tune, vary.predictor),
+                                    rep(0, predictor - vary.predictor - cons.predictor))
             }
         }else if(cons.predictor == 1){
             if(positive.jump){ ## positive jump change
                 y[1:cut] <- sum(x[1:cut, cons.predictor]) +
-                    apply(sign.change.tune*x[1:cut, (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) + rnorm(cut, 0, sigma1)
-            y[(cut+1):ntime] <- sum(x[(cut+1):ntime, cons.predictor]) +
-                apply(positive.jump.tune + sign.change.tune*x[(cut+1):ntime, (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) + rnorm(ntime - cut, 0, sigma2)
-                true.beta[1, ] <- c(rep(1, cons.predictor), rep(sign.change.tune, vary.predictor), rep(0, predictor - vary.predictor - cons.predictor))
-                true.beta[2, ] <- c(rep(1, cons.predictor), rep(positive.jump.tune + sign.change.tune, vary.predictor), rep(0, predictor - vary.predictor - cons.predictor))
+                    apply(sign.change.tune*x[1:cut,
+                    (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) +
+                    rnorm(cut, 0, sigma1)
+                y[(cut+1):ntime] <- sum(x[(cut+1):ntime, cons.predictor]) +
+                    apply(positive.jump.tune + sign.change.tune*x[(cut+1):ntime,
+                    (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) +
+                    rnorm(ntime - cut, 0, sigma2)
+                true.beta[1, ] <- c(rep(1, cons.predictor),
+                                    rep(sign.change.tune, vary.predictor),
+                                    rep(0, predictor - vary.predictor - cons.predictor))
+                true.beta[2, ] <- c(rep(1, cons.predictor),
+                                    rep(positive.jump.tune + sign.change.tune, vary.predictor),
+                                    rep(0, predictor - vary.predictor - cons.predictor))
             }else{ ## sign change only
                 y[1:cut] <- sum(x[1:cut, cons.predictor]) +
-                    apply(sign.change.tune*x[1:cut, (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) + rnorm(cut, 0, sigma1)
+                    apply(sign.change.tune*x[1:cut,
+                    (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) +
+                    rnorm(cut, 0, sigma1)
                 y[(cut+1):ntime] <-  sum(x[(cut+1):ntime, cons.predictor])  +
-                    apply(-sign.change.tune*x[(cut+1):ntime, (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) + rnorm(ntime - cut, 0, sigma2)
-                true.beta[1, ] <- c(rep(1, cons.predictor), rep(sign.change.tune, vary.predictor), rep(0, predictor - vary.predictor - cons.predictor))
-                true.beta[2, ] <- c(rep(1, cons.predictor), rep(-sign.change.tune, vary.predictor), rep(0, predictor - vary.predictor - cons.predictor))
+                    apply(-sign.change.tune*x[(cut+1):ntime,
+                    (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) +
+                    rnorm(ntime - cut, 0, sigma2)
+                true.beta[1, ] <- c(rep(1, cons.predictor), rep(sign.change.tune, vary.predictor),
+                                    rep(0, predictor - vary.predictor - cons.predictor))
+                true.beta[2, ] <- c(rep(1, cons.predictor), rep(-sign.change.tune, vary.predictor),
+                                    rep(0, predictor - vary.predictor - cons.predictor))
             }
         }else{ ## cons.predictor == 0
             if(positive.jump){ ## positive jump in the slope ex) 2 -> 4
-                y[1:cut] <- apply(sign.change.tune*x[1:cut, (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) + rnorm(cut, 0, sigma1)
-                y[(cut+1):ntime] <- apply(positive.jump.tune + sign.change.tune*x[(cut+1):ntime, (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) + rnorm(ntime - cut, 0, sigma2)
-                true.beta[1, ] <- c(rep(sign.change.tune, vary.predictor), rep(0, predictor - vary.predictor - cons.predictor))
-                true.beta[2, ] <- c(rep(positive.jump.tune + sign.change.tune, vary.predictor), rep(0, predictor - vary.predictor - cons.predictor))
+                y[1:cut] <- apply(sign.change.tune*x[1:cut, (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) +
+                    rnorm(cut, 0, sigma1)
+                y[(cut+1):ntime] <- apply(positive.jump.tune + sign.change.tune*x[(cut+1):ntime,
+                (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) +
+                    rnorm(ntime - cut, 0, sigma2)
+                true.beta[1, ] <- c(rep(sign.change.tune, vary.predictor),
+                                    rep(0, predictor - vary.predictor - cons.predictor))
+                true.beta[2, ] <- c(rep(positive.jump.tune + sign.change.tune, vary.predictor),
+                                    rep(0, predictor - vary.predictor - cons.predictor))
             }else{
                 if( vary.predictor == 1){
-                    y[1:cut] <- sum(sign.change.tune*x[1:cut, (cons.predictor+1):(cons.predictor+ vary.predictor)]) + rnorm(cut, 0, sigma1)
-                    y[(cut+1):ntime] <- sum(-sign.change.tune*x[(cut+1):ntime, (cons.predictor+1):(cons.predictor+ vary.predictor)]) + rnorm(ntime - cut, 0, sigma2)
-                    true.beta[1, ] <- c(rep(sign.change.tune, vary.predictor), rep(0, predictor - vary.predictor - cons.predictor))
-                    true.beta[2, ] <- c(rep(-sign.change.tune, vary.predictor), rep(0, predictor - vary.predictor - cons.predictor))
+                    y[1:cut] <- sum(sign.change.tune*x[1:cut, (cons.predictor+1):(cons.predictor+ vary.predictor)]) +
+                        rnorm(cut, 0, sigma1)
+                    y[(cut+1):ntime] <- sum(-sign.change.tune*x[(cut+1):ntime,
+                    (cons.predictor+1):(cons.predictor+ vary.predictor)]) +
+                        rnorm(ntime - cut, 0, sigma2)
+                    true.beta[1, ] <- c(rep(sign.change.tune, vary.predictor),
+                                        rep(0, predictor - vary.predictor - cons.predictor))
+                    true.beta[2, ] <- c(rep(-sign.change.tune, vary.predictor),
+                                        rep(0, predictor - vary.predictor - cons.predictor))
                 }else{
-                    y[1:cut] <- apply(sign.change.tune*x[1:cut, (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) + rnorm(cut, 0, sigma1)
-                    y[(cut+1):ntime] <- apply(-sign.change.tune*x[(cut+1):ntime, (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) + rnorm(ntime - cut, 0, sigma2)
-                    true.beta[1, ] <- c(rep(sign.change.tune, vary.predictor), rep(0, predictor - vary.predictor - cons.predictor))
-                    true.beta[2, ] <- c(rep(-sign.change.tune, vary.predictor), rep(0, predictor - vary.predictor - cons.predictor))
+                    y[1:cut] <- apply(sign.change.tune*x[1:cut,
+                    (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) +
+                        rnorm(cut, 0, sigma1)
+                    y[(cut+1):ntime] <- apply(-sign.change.tune*x[(cut+1):ntime,
+                    (cons.predictor+1):(cons.predictor+ vary.predictor)], 1, sum) +
+                        rnorm(ntime - cut, 0, sigma2)
+                    true.beta[1, ] <- c(rep(sign.change.tune, vary.predictor),
+                                        rep(0, predictor - vary.predictor - cons.predictor))
+                    true.beta[2, ] <- c(rep(-sign.change.tune, vary.predictor),
+                                        rep(0, predictor - vary.predictor - cons.predictor))
                 }
             }
         }
@@ -140,8 +187,11 @@ BridgeChangeSim <- function(ntime=500, predictor = 100, rho=0, time.series=FALSE
     ## Split data into train (.5) and test (.5) sets
     X.sd <- apply(x, 2, sd)
     y.sd <- sd(y)
-    beta.true <-  true.beta*(X.sd/y.sd)
-
+    if(standardize){
+        beta.true <-  true.beta*(X.sd/y.sd)
+    }else{
+        beta.true <- true.beta
+    }
     train_rows <- sort(sample(1:ntime, train.ratio*ntime, prob=rep(1/ntime, ntime)))
     x.train <- x[train_rows, ]
     x.test <- x[-train_rows, ]
@@ -465,11 +515,11 @@ BridgeChangeSim <- function(ntime=500, predictor = 100, rho=0, time.series=FALSE
     #                 y.train.c=y.train.c, x.train.c=x.train.c,
     #                 gp = gp, detected = model.names[which.min(model.test)])
     # }else{
-        out <- list(y=y, x=x, y.c=y.c, x.c=x.c, y.sd = y.sd, X.sd = X.sd,
-                    true.beta = beta.true,
-                    y.test.c=y.test.c, x.test.c=x.test.c,
-                    y.train.c=y.train.c, x.train.c=x.train.c)
-    # }
+    out <- list(y=y, x=x, y.c=y.c, x.c=x.c, y.sd = y.sd, X.sd = X.sd,
+                true.beta = beta.true,
+                y.test.c=y.test.c, x.test.c=x.test.c,
+                y.train.c=y.train.c, x.train.c=x.train.c)
+                                        # }
     return(out)
     ## turn on warning
     ## options(warn=0)

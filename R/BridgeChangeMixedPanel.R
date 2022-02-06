@@ -45,6 +45,10 @@
 #' @param Waic \code{= TRUE} If \code{= TRUE}, compute WAIC and store as "Waic.out." Retrieve using attr().
 #' @param marginal \code{= FALSE}
 #' @param fixed \code{= TRUE} If \code{= TRUE}, the fixed effects model is chosen as a baseline model.
+#' @param beta.alg
+#' An algorithm to sample beta.
+#' Default is \code{beta.alg = "BCK"}.
+#' Also supported is the traditional sampler based on the Cholesky decomposition: \code{beta.alg = "CHL"}.
 #'
 #' @return output
 #'
@@ -55,321 +59,351 @@
 #' @useDynLib BridgeChange
 #' @export
 BridgeMixedPanel <- function(
-  y, X, W,
-  subject.id,
-  time.id,
-  standardize = TRUE,
-  n.break = 1, intercept = FALSE,
-  mcmc = 100, burn = 100, verbose = 100, thin = 1,
-  b0, B0, c0 = 0.1, d0 = 0.1, r0, R0, a = NULL, b = NULL,
-  nu.shape = 2.0, nu.rate = 2.0, alpha = 1, alpha.MH = FALSE,
-  beta.start = NULL, sigma2.start = NA, D.start = NA, P.start = NA,
-  Waic = FALSE, marginal = FALSE, fixed = TRUE,
-  unscaled.Y, unscaled.X
-) {
-  
-  ## ---------------------------------------------------- ##
-  # Data
-  ## ---------------------------------------------------- ##
-  call <- match.call()
-  m <- n.break
-  ns <- m + 1
-  NT <- length(y)
-  X <- Xorig <- as.matrix(X)
-  K <- ncol(X)
-  Q <- ncol(W)
-  N <- length(unique(subject.id)) # number of subject
-  T <- length(unique(time.id)) ## length(y)
-
-  ## ---------------------------------------------------- ##
-  # data transformation
-  ## ---------------------------------------------------- ##
-  if (standardize) {
-    ## save original information
-    ysd <- sd(y)
-    Xsd <- apply(X, 2, sd)
-
-    ## demeaning Y
-    Y <- scale(y) # as.matrix(y - mean(y, na.rm = TRUE))
-    X <- as.matrix(scale(X))
-    if (!fixed) W <- as.matrix(scale(W))
-  } else {
-    Y <- as.matrix(y)
-    X <- as.matrix(X)
-    W <- as.matrix(W)
-  }
-
-  ## ---------------------------------------------------- ##
-  ## Sort Data based on time.id
-  ## ---------------------------------------------------- ##
-  oldTSCS <- cbind(time.id, subject.id, y, X, W)
-  newTSCS <- oldTSCS[order(oldTSCS[, 1]), ]
-  YT <- as.matrix(newTSCS[, 3])
-  XT <- as.matrix(newTSCS[, 4:(4 + K - 1)])
-  WT <- as.matrix(newTSCS[, (4 + K):(4 + K + Q - 1)])
-
-  nsubj <- length(unique(subject.id))
-  if (unique(subject.id)[1] != 1) {
-    stop("subject.id should start 1!")
-  }
-
-  ## subject.offset is the obs number from which a new subject unit starts
-  subject.offset <- c(0, which(diff(sort(subject.id)) == 1)[-nsubj])
-  ## col1: subj ID, col2: offset (C indexing), col3: #time periods in each subject
-  nsubject.vec <- rep(NA, nsubj)
-  for (i in 1:nsubj) {
-    nsubject.vec[i] <- sum(subject.id == unique(subject.id)[i])
-  }
-  subject.groupinfo <- cbind(unique(subject.id), subject.offset, nsubject.vec)
-
-  ## time.groupinfo
-  ## col1: time ID, col2: offset (C indexing), col3: # subjects in each time
-  if (unique(time.id)[1] != 1) {
-    time.id <- time.id - unique(time.id)[1] + 1
-    cat("time.id does not start from 1. So it is modified by subtracting the first unit of time.")
-  }
-
-  ntime <- max(nsubject.vec) ## maximum time length
-  ntime.vec <- rep(NA, ntime)
-  for (i in 1:ntime) {
-    ntime.vec[i] <- sum(time.id == unique(time.id)[i])
-  }
-  ## time.offset is the obs number from which a new time unit starts when we stack data by time.id
-  time.offset <- c(0, which(diff(sort(time.id)) == 1)[-ntime])
-  time.groupinfo <- cbind(unique(time.id), time.offset, ntime.vec)
-
-  ## ---------------------------------------------------- ##
-  ## Prior setting
-  ## ---------------------------------------------------- ##
-  ## mvn.prior <- MCMCpack:::form.mvn.prior(b0, B0, K)
-  ## b0 <- mvn.prior[[1]]
-  ## B0 <- mvn.prior[[2]]
-  R0 <- as.matrix(R0)
-  if (ncol(R0) != ncol(W)) {
-    stop("The dimension of R0 does not match the rank of W!")
-  }
-  ## B0inv   <-  solve(B0)
-  R0inv <- solve(R0)
-
-  ## prior inputs
-  if (m > 0) {
-    P0 <- MCMCpack:::trans.mat.prior(m = m, n = ntime, a = a, b = b)
-    ## initial values
-    P <- MCMCpack:::check.P(P.start, m, a = a, b = b)
-  } else {
-    P <- P0 <- matrix(1, 1, 1)
-  }
-
-  ## ---------------------------------------------------- ##
-  ## Initialize.
-  ## ---------------------------------------------------- ##
-  if (dim(X)[2] < dim(Y)[1]) {
-    ols <- lm(Y ~ X-1)
-    sig2 <- rep(summary(ols)$sigma, ns)^2
-    if (is.na(sigma2.start[1])) {
-      sig2 <- rep(summary(ols)$sigma, ns)^2
+                             y, X, W,
+                             subject.id,
+                             time.id,
+                             standardize = TRUE,
+                             n.break = 1, intercept = FALSE,
+                             mcmc = 100, burn = 100, verbose = 100, thin = 1,
+                             b0, B0, c0 = 0.1, d0 = 0.1, r0, R0, a = NULL, b = NULL,
+                             nu.shape = 2.0, nu.rate = 2.0, alpha = 1, alpha.MH = FALSE,
+                             beta.start = NULL, sigma2.start = NA, D.start = NA, P.start = NA,
+                             Waic = FALSE, marginal = FALSE, fixed = TRUE,
+                             beta.alg = "CHL",   
+                             unscaled.Y, unscaled.X
+                             ) {
+    
+    ## ---------------------------------------------------- ##
+                                        # Data
+    ## ---------------------------------------------------- ##
+    call <- match.call()
+    m <- n.break
+    ns <- m + 1
+    NT <- length(y)
+    X <- Xorig <- as.matrix(X)
+    K <- ncol(X)
+    Q <- ncol(W)
+    N <- length(unique(subject.id)) # number of subject
+    T <- length(unique(time.id)) ## length(y)
+    
+    ## ---------------------------------------------------- ##
+                                        # data transformation
+    ## ---------------------------------------------------- ##
+    if (standardize) {
+        ## save original information
+        ysd <- sd(y)
+        Xsd <- apply(X, 2, sd)
+        
+        ## demeaning Y
+        Y <- scale(y) # as.matrix(y - mean(y, na.rm = TRUE))
+        X <- as.matrix(scale(X))
+        if (!fixed) W <- as.matrix(scale(W))
     } else {
-      sig2 <- rep(sigma2start, ns)
+        Y <- as.matrix(y)
+        X <- as.matrix(X)
+        W <- as.matrix(W)
     }
-  } else {
-    ## if p > n, set p = n - 1 for ols initialization
-    ols <- lm(Y ~ X[, 2:length(y)])
-    if (is.na(sigma2.start[1])) {
-      sig2 <- rep(summary(ols)$sigma, ns)^2
+    
+    ## ---------------------------------------------------- ##
+    ## Sort Data based on time.id
+    ## ---------------------------------------------------- ##
+    oldTSCS <- cbind(time.id, subject.id, y, X, W)
+    newTSCS <- oldTSCS[order(oldTSCS[, 1]), ]
+    YT <- as.matrix(newTSCS[, 3])
+    XT <- as.matrix(newTSCS[, 4:(4 + K - 1)])
+    WT <- as.matrix(newTSCS[, (4 + K):(4 + K + Q - 1)])
+    
+    nsubj <- length(unique(subject.id))
+    if (unique(subject.id)[1] != 1) {
+        stop("subject.id should start 1!")
+    }
+    
+    ## subject.offset is the obs number from which a new subject unit starts
+    subject.offset <- c(0, which(diff(sort(subject.id)) == 1)[-nsubj])
+    ## col1: subj ID, col2: offset (C indexing), col3: #time periods in each subject
+    nsubject.vec <- rep(NA, nsubj)
+    for (i in 1:nsubj) {
+        nsubject.vec[i] <- sum(subject.id == unique(subject.id)[i])
+    }
+    subject.groupinfo <- cbind(unique(subject.id), subject.offset, nsubject.vec)
+    
+    ## time.groupinfo
+    ## col1: time ID, col2: offset (C indexing), col3: # subjects in each time
+    if (unique(time.id)[1] != 1) {
+        time.id <- time.id - unique(time.id)[1] + 1
+        cat("time.id does not start from 1. So it is modified by subtracting the first unit of time.")
+    }
+    
+    ntime <- max(nsubject.vec) ## maximum time length
+    ntime.vec <- rep(NA, ntime)
+    for (i in 1:ntime) {
+        ntime.vec[i] <- sum(time.id == unique(time.id)[i])
+    }
+    ## time.offset is the obs number from which a new time unit starts when we stack data by time.id
+    time.offset <- c(0, which(diff(sort(time.id)) == 1)[-ntime])
+    time.groupinfo <- cbind(unique(time.id), time.offset, ntime.vec)
+    
+    ## ---------------------------------------------------- ##
+    ## Prior setting
+    ## ---------------------------------------------------- ##
+    ## mvn.prior <- MCMCpack:::form.mvn.prior(b0, B0, K)
+    ## b0 <- mvn.prior[[1]]
+    ## B0 <- mvn.prior[[2]]
+    R0 <- as.matrix(R0)
+    if (ncol(R0) != ncol(W)) {
+        stop("The dimension of R0 does not match the rank of W!")
+    }
+    ## B0inv   <-  solve(B0)
+    R0inv <- solve(R0)
+    
+    ## prior inputs
+    if (m > 0) {
+        P0 <- MCMCpack:::trans.mat.prior(m = m, n = ntime, a = a, b = b)
+        ## initial values
+        P <- MCMCpack:::check.P(P.start, m, a = a, b = b)
     } else {
-      sig2 <- rep(sigma2start, ns)
+        P <- P0 <- matrix(1, 1, 1)
     }
-  }
-  lambda <- rmvnorm(ns, rep(1, K))
-  tau <- rep(1, ns)
-  alpha <- rep(alpha[1], ns)
-
-  if (!is.null(beta.start)) {
-    beta <- matrix(beta.start, nrow = ns, ncol = length(beta.start))
-  } else {
-      cat("Initializing betas by SLOG\n")
-      beta_slog <- SLOG(x = X, y = Y, l = tau[1])
-      beta <- matrix(beta_slog, nrow = ns, ncol = length(beta_slog))
-  }
-
-  ## ---------------------------------------------------- ##
-  # initialize saving matrix
-  ## ---------------------------------------------------- ##
-  nstore      <- mcmc / thin
-  alphadraws  <- matrix(data = 0, nstore, ns)
-  taudraws    <- matrix(data = 0, nstore, ns)
-  betadraws   <- matrix(data = 0, nstore, ns * K)
-  lambdadraws <- matrix(data = 0, nstore, ns * K)
-  sigmadraws  <- beta0draws <- matrix(data = 0, nstore, ns)
-  if (!fixed) Ddraws <- matrix(data = 0, nstore, ns * Q * Q)
-  psdraws <- matrix(data = 0, ntime, ns)
-  sdraws  <- matrix(data = 0, nstore, ntime)
-  Z.loglike.array <- matrix(data = 0, nstore, NT)
-  if (n.break > 0) Pmat <- matrix(NA, nstore, ns)
-
-  known.alpha <- FALSE
-  XVX <- XVy <- ehat <- D <- Dinv <- br <- bi <- as.list(rep(NA, ns))
-  for (j in 1:ns) {
-    XVX[[j]]  <- matrix(0, K, K)
-    XVy[[j]]  <- matrix(0, K, 1)
-    D[[j]]    <- R0
-    Dinv[[j]] <- R0inv
-    br[[j]]   <- matrix(NA, Q, N)
-    bi[[j]]   <- matrix(rnorm(Q), Q, 1)
-  }
-
-  ## make an array
-  Yt_arr <- Xt_arr <- Wt_arr <- as.list(rep(NA, ntime))
-  for (tt in 1:ntime) {
-    N.tt <- sum(time.id == tt)
-    Yt_arr[[tt]] <- as.matrix(Y[time.id == tt], N.tt, 1)
-    Xt_arr[[tt]] <- as.matrix(X[time.id == tt, ], N.tt, K)
-    Wt_arr[[tt]] <- as.matrix(W[time.id == tt, ], N.tt, Q)
-  }
-
-  ## prepare initial stuff
-  ## ps.store <- matrix(0, T, ns)
-  start.time <- proc.time()
-  ps.store <- rep(0, ntime)
-  totiter <- mcmc + burn
-  if (n.break > 0) {
-    state <- sort(sample(1:ns, size = T, replace = TRUE, prob = (rep(1, ns))))
-    ps <- matrix(1, T, ns) / ns
-    ## cat("randomly chosen initial state = ", table(state), "\n")
-  } else {
-    state <- rep(1, T)
-    ps <- matrix(1, T, 1)
-  }
-
-  if (verbose != 0) {
-    cat("----------------------------------------------------\n")
-    cat("MCMC SparseChangeMixedPanel Sampler Starts! \n")
-    cat("Initial state = ", table(state), "\n")
-    ## cat("function called: ")
-    ## print(call)
-    ## cat("start.time: ", start.time, "\n")
-    cat("----------------------------------------------------\n")
-  }
-
-
-  ## ---------------------------------------------------- ##
-  ## MCMC sampler starts here!
-  ## ---------------------------------------------------- ##
-  random.perturb <- 0
-  for (iter in 1:totiter) {
-
-    ## if( i%%verbose==0 ) cat("iteration ", i, "\n")
-    if (iter == (burn + 1)) {
-      ess.time <- proc.time()
-    }
+    
     ## ---------------------------------------------------- ##
-    ## Step 1: tau -- (no change)
+    ## Initialize.
     ## ---------------------------------------------------- ##
-    ## for (j in 1:ns){
-    ##     tau[j] = draw.tau(beta[j,], alpha[j], nu.shape, nu.rate)
-    ##     ## cat("tau[",j, "] = ", tau[j], "\n");
-    ## }
-
-    tau <- draw_tau_cpp(beta, alpha, nu.shape, nu.rate, ns)
-
-    ## ---------------------------------------------------- ##
-    ## Step 2: bi (added)
-    ## ---------------------------------------------------- ##
-    SSE <- Nj <- rep(0, ns)
-    for (j in 1:ns) {
-      XVX[[j]] <- matrix(0, K, K)
-      XVy[[j]] <- matrix(0, K, 1)
-    }
-
-    if (fixed) {
-      for (j in 1:ns) {
-        ej <- state == j
-        for (tt in which(ej)) {
-          XVX[[j]] <- XVX[[j]] + crossprod(Xt_arr[[tt]])
-          XVy[[j]] <- XVy[[j]] + t(Xt_arr[[tt]]) %*% Yt_arr[[tt]]
+    if (dim(X)[2] < dim(Y)[1]) {
+        ols <- lm(Y ~ X-1)
+        sig2 <- rep(summary(ols)$sigma, ns)^2
+        if (is.na(sigma2.start[1])) {
+            sig2 <- rep(summary(ols)$sigma, ns)^2
+        } else {
+            sig2 <- rep(sigma2start, ns)
         }
-      }
-      for (i in 1:N) {
+    } else {
+        ## if p > n, set p = n - 1 for ols initialization
+        ols <- lm(Y ~ X[, 2:length(y)])
+        if (is.na(sigma2.start[1])) {
+            sig2 <- rep(summary(ols)$sigma, ns)^2
+        } else {
+            sig2 <- rep(sigma2start, ns)
+        }
+    }
+    
+    
+    lambda <- rmvnorm(ns, rep(1, K))
+    tau <- rep(1, ns)
+    alpha <- rep(alpha[1], ns)
+    
+    if (!is.null(beta.start)) {
+        beta <- matrix(beta.start, nrow = ns, ncol = length(beta.start))
+    } else {
+        cat("Initializing betas by SLOG\n")
+        beta_slog <- SLOG(x = X, y = Y, l = tau[1])
+        beta <- matrix(beta_slog, nrow = ns, ncol = length(beta_slog))
+    }
+    
+    ## ---------------------------------------------------- ##
+    ## initialize saving matrix
+    ## ---------------------------------------------------- ##
+    nstore      <- mcmc / thin
+    alphadraws  <- matrix(data = 0, nstore, ns)
+    taudraws    <- matrix(data = 0, nstore, ns)
+    betadraws   <- matrix(data = 0, nstore, ns * K)
+    lambdadraws <- matrix(data = 0, nstore, ns * K)
+    sigmadraws  <- beta0draws <- matrix(data = 0, nstore, ns)
+    if (!fixed) Ddraws <- matrix(data = 0, nstore, ns * Q * Q)
+    psdraws <- matrix(data = 0, ntime, ns)
+    sdraws  <- matrix(data = 0, nstore, ntime)
+    Z.loglike.array <- matrix(data = 0, nstore, NT)
+    if (m > 0) Pmat <- matrix(NA, nstore, ns)
+    
+    known.alpha <- FALSE
+    XVX <- XVy <- ehat <- D <- Dinv <- br <- bi <- as.list(rep(NA, ns))
+    for (j in 1:ns) {
+        XVX[[j]]  <- matrix(0, K, K)
+        XVy[[j]]  <- matrix(0, K, 1)
+        D[[j]]    <- R0
+        Dinv[[j]] <- R0inv
+        br[[j]]   <- matrix(NA, Q, N)
+        bi[[j]]   <- matrix(rnorm(Q), Q, 1)
+    }
+    
+    ## make an array
+    Yt_arr <- Xt_arr <- Wt_arr <- as.list(rep(NA, ntime))
+    for (tt in 1:ntime) {
+        N.tt <- sum(time.id == tt)
+        Yt_arr[[tt]] <- as.matrix(Y[time.id == tt], N.tt, 1)
+        Xt_arr[[tt]] <- as.matrix(X[time.id == tt, ], N.tt, K)
+        Wt_arr[[tt]] <- as.matrix(W[time.id == tt, ], N.tt, Q)
+    }
+    
+    ## prepare initial stuff
+    ## ps.store <- matrix(0, T, ns)
+    start.time <- proc.time()
+    ps.store <- rep(0, ntime)
+    totiter <- mcmc + burn
+    if (m > 0) {
+        state <- sort(sample(1:ns, size = T, replace = TRUE, prob = (rep(1, ns))))
+        ps <- matrix(1, T, ns) / ns
+        ## cat("randomly chosen initial state = ", table(state), "\n")
+    } else {
+        state <- rep(1, T)
+        ps <- matrix(1, T, 1)
+    }
+    
+    if (verbose != 0) {
+        cat("----------------------------------------------------\n")
+        cat("MCMC SparseChangeMixedPanel Sampler Starts! \n")
+        cat("Initial state = ", table(state), "\n")
+        ## cat("function called: ")
+        ## print(call)
+        ## cat("start.time: ", start.time, "\n")
+        cat("----------------------------------------------------\n")
+    }
+
+    
+    ## ---------------------------------------------------- ##
+    ## MCMC sampler starts here!
+    ## ---------------------------------------------------- ##
+    random.perturb <- 0
+    Xm <- Ym <- Wm <- list()
+    for (iter in 1:totiter) {
+        
+        ## if( i%%verbose==0 ) cat("iteration ", i, "\n")
+        if (iter == (burn + 1)) {
+            ess.time <- proc.time()
+        }
+        ## ---------------------------------------------------- ##
+        ## Step 1: tau -- (no change)
+        ## ---------------------------------------------------- ##
+        ## for (j in 1:ns){
+        ##     tau[j] = draw.tau(beta[j,], alpha[j], nu.shape, nu.rate)
+        ##     ## cat("tau[",j, "] = ", tau[j], "\n");
+        ## }
+        
+        tau <- draw_tau_cpp(beta, alpha, nu.shape, nu.rate, ns)
+        
+        ## ---------------------------------------------------- ##
+        ## Step 2: bi (added)
+        ## ---------------------------------------------------- ##
+        SSE <- Nj <- rep(0, ns)
         for (j in 1:ns) {
-          ej <- as.numeric(is.element(time.id, which(state == j)) & subject.id == i)
-          nj <- sum(ej)
-          yj <- matrix(Y[ej == 1], nj, 1)
-          Xj <- matrix(X[ej == 1, ], nj, K)
-          ehatj <- yj - Xj %*% beta[j, ]
-          ## Vj  <-  solve(sig2[j]*diag(nj))
-          ## XVX[[j]] <-  XVX[[j]] + crossprod(Xj)## t(Xj)%*%Xj
-          ## XVy[[j]] <-  XVy[[j]] + t(Xj)%*%yj
-          e <- t(ehatj) %*% (ehatj)
-          SSE[j] <- SSE[j] + e
+            XVX[[j]] <- matrix(0, K, K)
+            XVy[[j]] <- matrix(0, K, 1)
         }
-      }
-    } else {
-      for (i in 1:N) {
+        ## fixed effect
+        if (fixed) {
+            for (j in 1:ns) {
+                ej <- state == j
+                for (tt in which(ej)) {
+                    XVX[[j]] <- XVX[[j]] + crossprod(Xt_arr[[tt]])
+                    XVy[[j]] <- XVy[[j]] + t(Xt_arr[[tt]]) %*% Yt_arr[[tt]]
+                }
+            }
+            for (i in 1:N) {
+                for (j in 1:ns) {
+                    ej <- as.numeric(is.element(time.id, which(state == j)) & subject.id == i)
+                    nj <- sum(ej)
+                    yj <- matrix(Y[ej == 1], nj, 1)
+                    Xj <- matrix(X[ej == 1, ], nj, K)
+                    ehatj <- yj - Xj %*% beta[j, ]
+                    ## Vj  <-  solve(sig2[j]*diag(nj))
+                    ## XVX[[j]] <-  XVX[[j]] + crossprod(Xj)## t(Xj)%*%Xj
+                    ## XVy[[j]] <-  XVy[[j]] + t(Xj)%*%yj
+                    e <- t(ehatj) %*% (ehatj)
+                    SSE[j] <- SSE[j] + e
+                    ## print(SSE[j])
+                }
+            }
+            
+        } else {
+            ## random effect
+            for (i in 1:N) {
+                for (j in 1:ns) {
+                    ej <- as.numeric(is.element(time.id, which(state == j)) & subject.id == i)
+                    nj <- sum(ej)
+                    yj <- matrix(Y[ej == 1], nj, 1)
+                    Xj <- matrix(X[ej == 1, ], nj, K)
+                    Wj <- matrix(W[ej == 1, ], nj, Q)
+                    ehatj <- yj - Xj %*% beta[j, ]
+                    Vj <- chol2inv(chol(sig2[j] * diag(nj) + Wj %*% D[[j]] %*% t(Wj)))
+                    XVX[[j]] <- XVX[[j]] + t(Xj) %*% Vj %*% Xj
+                    XVy[[j]] <- XVy[[j]] + t(Xj) %*% Vj %*% yj
+                    V <- chol2inv(chol(Dinv[[j]] + t(Wj) %*% Wj / sig2[j]))
+                    U <- chol(V)
+                    Mu <- V %*% (t(Wj) %*% ehatj) / sig2[j]
+                    bi[[j]] <- drop(Mu + t(U) %*% rnorm(Q)) ## as.vector(rmvnorm(1, post.bi.mean, post.bi.var))
+                    br[[j]][, i] <- bi[[j]] # save all bi by subjectwise
+                    ## wbr[j:(j+ni-1)]     <-  Wi%*%bi
+                    
+                    ## Xm[[j]] <- Xj
+                    ## Ym[[j]] <- yj -  Wi%*%bi[[j]]
+                    
+                    ## FOR SIGMA
+                    ## Nj[j] = YN[j] + yj.rows();
+                    e <- t(ehatj - Wj %*% bi[[j]]) %*% (ehatj - Wj %*% bi[[j]])
+                    SSE[j] <- SSE[j] + e
+                }
+            }
+        }
+        
+        ## ---------------------------------------------------- ##
+        ## Step 3: sig2 (change!!)
+        ## ---------------------------------------------------- ##
         for (j in 1:ns) {
-          ej <- as.numeric(is.element(time.id, which(state == j)) & subject.id == i)
-          nj <- sum(ej)
-          yj <- matrix(Y[ej == 1], nj, 1)
-          Xj <- matrix(X[ej == 1, ], nj, K)
-          Wj <- matrix(W[ej == 1, ], nj, Q)
-          ehatj <- yj - Xj %*% beta[j, ]
-          Vj <- chol2inv(chol(sig2[j] * diag(nj) + Wj %*% D[[j]] %*% t(Wj)))
-          XVX[[j]] <- XVX[[j]] + t(Xj) %*% Vj %*% Xj
-          XVy[[j]] <- XVy[[j]] + t(Xj) %*% Vj %*% yj
-          V <- chol2inv(chol(Dinv[[j]] + t(Wj) %*% Wj / sig2[j]))
-          U <- chol(V)
-          Mu <- V %*% (t(Wj) %*% ehatj) / sig2[j]
-          bi[[j]] <- drop(Mu + t(U) %*% rnorm(Q)) ## as.vector(rmvnorm(1, post.bi.mean, post.bi.var))
-          br[[j]][, i] <- bi[[j]] # save all bi by subjectwise
-          ## wbr[j:(j+ni-1)]     <-  Wi%*%bi
-
-          ## FOR SIGMA
-          ## Nj[j] = YN[j] + yj.rows();
-          e <- t(ehatj - Wj %*% bi[[j]]) %*% (ehatj - Wj %*% bi[[j]])
-          SSE[j] <- SSE[j] + e
+            Nj[[j]] <- sum(is.element(time.id, which(state == j)))
+            shape <- (c0 + Nj[[j]]) * 0.5
+            rate <- (d0 + SSE[j]) * 0.5
+            sig2[j] <- rinvgamma(1, shape, rate)
         }
-      }
-    }
+        
+        ## ---------------------------------------------------- ##
+        ## Step 4: D (added)
+        ## ---------------------------------------------------- ##
+        if (!fixed) {
+            Nij <- Nj
+            for (j in 1:ns) {
+                Nij[[j]] <- sum(is.element(1:max(time.id), which(state == j)))
+                brbr <- br[[j]] %*% t(br[[j]])
+                Rinv <- chol2inv(chol(R0inv + brbr))
+                r <- r0 + Nj[[j]] ## bi is repeated n.id times
+                Dinv[[j]] <- MCMCpack::rwish(r, Rinv)
+                D[[j]] <- chol2inv(chol(Dinv[[j]]))
+            }
+        }
+        
+        ## ---------------------------------------------------- ##
+        ## Step 5: lambda (no change)
+        ## ---------------------------------------------------- ##
+        for (j in 1:ns) {
+            for (k in 1:K) {
+                lambda[j, k] <- 2 * retstable(0.5 * alpha[j], 1.0, (beta[j, k]/ tau[j])^2, method = "LD")
+            }
+        }
 
-    ## ---------------------------------------------------- ##
-    ## Step 3: sig2 (change!!)
-    ## ---------------------------------------------------- ##
-    for (j in 1:ns) {
-      Nj[[j]] <- sum(is.element(time.id, which(state == j)))
-      shape <- (c0 + Nj[[j]]) * 0.5
-      rate <- (d0 + SSE[j]) * 0.5
-      sig2[j] <- rinvgamma(1, shape, rate)
-    }
+        ## ---------------------------------------------------- ##
+        ## Step 6: beta (change)
+        ## ---------------------------------------------------- ##
 
-    ## ---------------------------------------------------- ##
-    ## Step 4: D (added)
-    ## ---------------------------------------------------- ##
-    if (!fixed) {
-      Nij <- Nj
-      for (j in 1:ns) {
-        Nij[[j]] <- sum(is.element(1:max(time.id), which(state == j)))
-        brbr <- br[[j]] %*% t(br[[j]])
-        Rinv <- chol2inv(chol(R0inv + brbr))
-        r <- r0 + Nj[[j]] ## bi is repeated n.id times
-        Dinv[[j]] <- rwish(r, Rinv)
-        D[[j]] <- chol2inv(chol(Dinv[[j]]))
-      }
-    }
-
-    ## ---------------------------------------------------- ##
-    ## Step 5: lambda (no change)
-    ## ---------------------------------------------------- ##
-    for (j in 1:ns) {
-      for (k in 1:K) {
-        lambda[j, k] <- 2 * retstable(0.5 * alpha[j], 1.0, (beta[j, k]/ tau[j])^2, method = "LD")
-      }
-    }
-
-    ## ---------------------------------------------------- ##
-    ## Step 6: beta (change)
-    ## ---------------------------------------------------- ##
-    beta <- draw_beta_BCK_cpp(XVX, XVy, lambda, sig2, tau, ns, K)
-
-    ## ---------------------------------------------------- ##
+        ## compute Xm and Ym for fixed and random
+        state.time.index <- rep(state, N)        
+        for (j in 1:ns) {
+            Xm[[j]] <- X[state.time.index == j,]            
+            if (fixed) {
+                Ym[[j]] <- Y[state.time.index == j,]
+            }else{
+                Wm[[j]] <- W[state.time.index == j,]            
+                Ym[[j]] <- Y[state.time.index == j,] - Wm[[j]]%*%bi[[j]]
+            }
+        }
+        
+        ## beta <- draw_beta_BCK_cpp(XVX, XVy, lambda, sig2, tau, ns, K)
+        if (beta.alg %in% c("BCK")) {
+            beta <- draw_beta_BCK_cpp(Xm, Ym, lambda, sig2, tau, ns, K)
+        } else if (beta.alg %in% c("CHL")) {
+            beta <- draw_beta_cpp(XVX, XVy, lambda, sig2, tau, ns, K)
+        } else{
+            stop("beta.alg is an unknown form.\n")
+        }
+        
+        ## ---------------------------------------------------- ##
     ## Step 7: alpha (no change)
     ## ---------------------------------------------------- ##
     if (!known.alpha) {
@@ -383,57 +417,56 @@ BridgeMixedPanel <- function(
       }
     }
 
-    ## ---------------------------------------------------- ##
-    ## Estimate intercept
-    ## ---------------------------------------------------- ##
-    beta0 <- estimate_intercept_reg(y, Xorig, beta, n.break, intercept, state)
-
-    ## ---------------------------------------------------- ##
-    ## Step 8: sampling S (change)
-    ## ---------------------------------------------------- ##
-    if (n.break > 0) {
-      ## tau, alpha, lambda are all marginalized out in likelihood!
-      ## state.out <- sparse.panel.state.sampler(m=m, T=T, N=N,  Yt_arr=Yt_arr, Xt_arr=Xt_arr,
-      ##                                         Wt_arr=Wt_arr, beta=beta, bi=bi, sig2=sig2, D=D, P=P)
-      ## JHP: we changed the mean of mvnormal distribution by adding br
-      ## state.out <- sparse.panel.state.sampler2(m=m, T=T, N=N,  Yt_arr=Yt_arr, Xt_arr=Xt_arr,
-      ##                                         beta=beta, br=br, sig2=sig2, D=D, P=P)
-      if (fixed) {
-        state.out <- sparse_fixed_state_sampler_cpp(
-          m = m, T = T, N = N, Yt_arr = Yt_arr,
-          Xt_arr = Xt_arr, beta = beta, sig2 = sig2, P = P
-        )
-      } else {
-        state.out <- sparse_panel_state_sampler_cpp(
-          m = m, T = T, N = N, Yt_arr = Yt_arr,
-          Xt_arr = Xt_arr, Wt_arr = Wt_arr, D = D,
-          beta = beta, sig2 = sig2, P = P
-        )
+      ## ---------------------------------------------------- ##
+      ## Estimate intercept
+      ## ---------------------------------------------------- ##
+      if(intercept){
+          beta0 <- estimate_intercept_reg(y, Xorig, beta, m, intercept, state)
       }
-      state <- state.out$state
-      ## report if random perturbation turns on only once.
-      if (length(table(state)) < ns & random.perturb == 0) {
-        cat("\nThe number of sampled latent state is smaller than that of the designated state. This is due largely to model misfit. In order to do the model comparison, the latent state will be randomly perturbed by equal probabilities here. But we recommend users to rethink the model!\n")
-        state <- sort(sample(1:ns, size = ntime, replace = TRUE, prob = apply(ps, 2, mean)))
-        random.perturb <- random.perturb + 1
+      ## ---------------------------------------------------- ##
+      ## Step 8: sampling S (change)
+      ## ---------------------------------------------------- ##
+      if (m > 0) {
+          ## tau, alpha, lambda are all marginalized out in likelihood!
+          ## state.out <- sparse.panel.state.sampler(m=m, T=T, N=N,  Yt_arr=Yt_arr, Xt_arr=Xt_arr,
+          ##                                         Wt_arr=Wt_arr, beta=beta, bi=bi, sig2=sig2, D=D, P=P)
+          ## JHP: we changed the mean of mvnormal distribution by adding br
+          ## state.out <- sparse.panel.state.sampler2(m=m, T=T, N=N,  Yt_arr=Yt_arr, Xt_arr=Xt_arr,
+          ##                                         beta=beta, br=br, sig2=sig2, D=D, P=P)
+          if (fixed) {
+              state.out <- sparse_fixed_state_sampler_cpp(
+                  m = m, T = T, N = N, Yt_arr = Yt_arr,
+                  Xt_arr = Xt_arr, beta = beta, sig2 = sig2, P = P)
+          } else {
+              state.out <- sparse_panel_state_sampler_cpp(
+                  m = m, T = T, N = N, Yt_arr = Yt_arr,
+                  Xt_arr = Xt_arr, Wt_arr = Wt_arr, D = D,
+                  beta = beta, sig2 = sig2, P = P)
+          }
+          state <- state.out$state
+          ## report if random perturbation turns on only once.
+          if (length(table(state)) < ns & random.perturb == 0) {
+              cat("\nThe number of sampled latent state is smaller than that of the designated state. This is due largely to model misfit. The latent state will be randomly perturbed by equal probabilities. But we recommend users to rethink the model specification.\n")
+              state <- sort(sample(1:ns, size = ntime, replace = TRUE, prob = apply(ps, 2, mean)))
+              random.perturb <- random.perturb + 1
+          }
+          ps <- state.out$ps
+          
+          ## cat("table(state) = ", table(state),  "\n")
       }
-      ps <- state.out$ps
-
-      ## cat("table(state) = ", table(state),  "\n")
-    }
-
-    ## ---------------------------------------------------- ##
-    ## Step 9: sampling P
-    ## ---------------------------------------------------- ##
-    if (n.break > 0) {
-      switch_mat <- switchg(state, m = m)
-      ## cat("switch = ", print(switch_mat) ,  "\n")
-      for (j in 1:ns) {
-        switch1 <- P0[j, ] + switch_mat[j, ]
-        pj <- rdirichlet.cp(1, switch1)
-        P[j, ] <- pj
+      
+      ## ---------------------------------------------------- ##
+      ## Step 9: sampling P
+      ## ---------------------------------------------------- ##
+      if (m > 0) {
+          switch_mat <- switchg(state, m = m)
+          ## cat("switch = ", print(switch_mat) ,  "\n")
+          for (j in 1:ns) {
+              switch1 <- P0[j, ] + switch_mat[j, ]
+              pj <- rdirichlet.cp(1, switch1)
+              P[j, ] <- pj
+          }
       }
-    }
 
     ## ---------------------------------------------------- ##
     ## report
@@ -442,7 +475,7 @@ BridgeMixedPanel <- function(
       cat("\n----------------------------------------------", "\n")
       cat("## iteration = ", iter, "\n")
       cat("----------------------------------------------", "\n")
-      if (n.break > 0) {
+      if (m > 0) {
         cat("sampled states: ", table(state), "\n")
         ## cat("Transition matrix: ", format(t(P), digits=2) , '\n')
         for (j in 1:ns) {
@@ -464,14 +497,16 @@ BridgeMixedPanel <- function(
     if (iter > burn && (iter %% thin == 0)) {
       alphadraws[(iter - burn) / thin, ] <- alpha
       betadraws[(iter - burn) / thin, ] <- t(beta)
-      beta0draws[(iter - burn) / thin, ] <- as.vector(beta0)
+      if(intercept){
+          beta0draws[(iter - burn) / thin, ] <- as.vector(beta0)
+      }
       lambdadraws[(iter - burn) / thin, ] <- t(lambda)
       sigmadraws[(iter - burn) / thin, ] <- sig2
       taudraws[(iter - burn) / thin, ] <- tau
       if (!fixed) {
         Ddraws[(iter - burn) / thin, ] <- unlist(D)
       }
-      if (n.break > 0) {
+      if (m > 0) {
         Pmat[(iter - burn) / thin, ] <- diag(P)
         sdraws[(iter - burn) / thin, ] <- state
         ps.store <- ps.store + ps
@@ -481,112 +516,115 @@ BridgeMixedPanel <- function(
         marker <- 1
         for (i in 1:N) {
           for (j in 1:ns) {
-            ej <- as.numeric(is.element(time.id, which(state == j)) & subject.id == i)
-            nj <- sum(ej)
-            if (nj > 0) {
-              yj <- matrix(y[ej == 1], nj, 1)
-              Xj <- matrix(X[ej == 1, ], nj, K)
-
-              if (fixed) {
-                mu.state <- Xj %*% beta[j, ]
-              } else {
-                Wj <- matrix(W[ej == 1, ], nj, Q)
-                mu.state <- Xj %*% beta[j, ] + Wj %*% bi[[j]]
+              
+              ej <- as.numeric(is.element(time.id, which(state == j)) & subject.id == i)
+              nj <- sum(ej)
+              
+              if (nj > 0) {
+                  
+                  yj <- matrix(y[ej == 1], nj, 1)
+                  Xj <- matrix(X[ej == 1, ], nj, K)
+                  
+                  if (fixed) {
+                      mu.state <- Xj %*% beta[j, ]
+                  } else {
+                      Wj <- matrix(W[ej == 1, ], nj, Q)
+                      mu.state <- Xj %*% beta[j, ] + Wj %*% bi[[j]]
+                  }
+                  ## cat("marker:(marker+nj-1) is ", marker:(marker+nj-1), "\n")
+                  ## cat("dnorm is ", dnorm(yj, mean = mu.state, sd=sqrt(sig2[j]), log=TRUE), "\n")
+                  Z.loglike.array[(iter - burn) / thin, marker:(marker + nj - 1)] <-
+                      dnorm(yj, mean = mu.state, sd = sqrt(sig2[j]), log = TRUE)
+                  
+                  ## log(dnorm(yi, Mu, sqrt(sig2)))
               }
-              ## cat("marker:(marker+nj-1) is ", marker:(marker+nj-1), "\n")
-              ## cat("dnorm is ", dnorm(yj, mean = mu.state, sd=sqrt(sig2[j]), log=TRUE), "\n")
-              Z.loglike.array[(iter - burn) / thin, marker:(marker + nj - 1)] <-
-                dnorm(yj, mean = mu.state, sd = sqrt(sig2[j]), log = TRUE)
-
-              ## log(dnorm(yi, Mu, sqrt(sig2)))
-            }
-            marker <- marker + nj
-            ## c(mu.state[t, state[t]])
+              marker <- marker + nj
+              ## c(mu.state[t, state[t]])
           }
         }
       }
     }
   }
-
-
-  ## ---------------------------------------------------- ##
-  ## Marginal Likelihood Estimation starts here!
-  ## ---------------------------------------------------- ##
-  ## ---------------------------------------------------- ##
-  ## prepare
-  ## ---------------------------------------------------- ##
-  beta.st <- matrix(apply(betadraws, 2, mean), ns, K, byrow = TRUE)
-  lambda.st <- matrix(apply(lambdadraws, 2, mean), ns, K, byrow = TRUE)
-  sig2.st <- apply(sigmadraws, 2, mean)
-  if (!fixed) {
-    D.st <- Dinv.st <- D
-    D.st.raw <- apply(Ddraws, 2, mean)
-    for (j in 1:ns) {
-      D.st[[j]] <- matrix(D.st.raw[(j - 1) * Q * Q + 1:(Q * Q)], Q, Q)
-      Dinv.st[[j]] <- chol2inv(chol(D.st[[j]]))
-    }
-  }
-
-  alpha.st <- apply(alphadraws, 2, mean)
-  tau.st <- apply(taudraws, 2, mean)
-  if (n.break > 0) {
-    P.st <- apply(Pmat, 2, mean)
-  }
-  ## ---------------------------------------------------- ##
-  ## Likelihood computation
-  ## ---------------------------------------------------- ##
-  marker <- 1
-  resid <- loglike.t <- rep(NA, NT)
-  bi.st <- bi
-  for (i in 1:N) {
-    for (j in 1:ns) {
-      ej <- as.numeric(is.element(time.id, which(state == j)) & subject.id == i)
-      nj <- sum(ej)
-      if (nj > 0) {
-        yj <- matrix(y[ej == 1], nj, 1)
-        Xj <- matrix(X[ej == 1, ], nj, K)
-        unscaled.yj <- matrix(unscaled.Y[ej == 1], nj, 1)
-        unscaled.Xj <- matrix(unscaled.X[ej == 1, ], nj, K)
-        if (fixed) {
-          mu.state.st <- Xj %*% beta.st[j, ]
-          mu.state.unscaled <- unscaled.Xj %*% beta.st[j, ]
-        } else {
-          Wj <- matrix(W[ej == 1, ], nj, Q)
-          ehatj <- yj - Xj %*% beta.st[j, ]
-          V <- chol2inv(chol(Dinv[[j]] + t(Wj) %*% Wj / sig2[j]))
-          U <- chol(V)
-          Mu <- V %*% (t(Wj) %*% ehatj) / sig2[j]
-          bi.st[[j]] <- drop(Mu + t(U) %*% rnorm(Q)) ## as.vector(rmvnorm(1, post.bi.mean, post.bi.var))
-          mu.state.st <- Xj %*% beta.st[j, ] + Wj %*% bi.st[[j]]
-          ## unscaled.W must be considered here....later...JHP
+    
+    
+    ## ---------------------------------------------------- ##
+    ## Likelihood Estimation
+    ## ---------------------------------------------------- ##
+    beta.st <- matrix(apply(betadraws, 2, mean), ns, K, byrow = TRUE)
+    lambda.st <- matrix(apply(lambdadraws, 2, mean), ns, K, byrow = TRUE)
+    sig2.st <- apply(sigmadraws, 2, mean)
+    if (!fixed) {
+        D.st <- Dinv.st <- D
+        D.st.raw <- apply(Ddraws, 2, mean)
+        for (j in 1:ns) {
+            D.st[[j]] <- matrix(D.st.raw[(j - 1) * Q * Q + 1:(Q * Q)], Q, Q)
+            Dinv.st[[j]] <- chol2inv(chol(D.st[[j]]))
         }
-        ## Likelihood computation
-        loglike.t[marker:(marker + nj - 1)] <- dnorm(yj, mean = mu.state.st, sd = sqrt(sig2.st[j]), log = TRUE)
-        resid[marker:(marker + nj - 1)] <- yj - mu.state.st
-      }
-      marker <- marker + nj
     }
-  }
-  loglike <- sum(loglike.t)
-
-  cat("\n---------------------------------------------- \n ")
-  cat("Likelihood computation \n")
-  cat("    loglike: ", as.numeric(loglike), "\n")
-  cat("---------------------------------------------- \n ")
-
-  if (marginal) {
-    ## holders
-    density.sig2.holder <- density.nu.holder <- density.D.holder <- matrix(NA, mcmc, ns)
-
+    
+    alpha.st <- apply(alphadraws, 2, mean)
+    tau.st <- apply(taudraws, 2, mean)
+    if (n.break > 0) {
+        P.st <- apply(Pmat, 2, mean)
+    }
     ## ---------------------------------------------------- ##
-    ## Marginal Step 1. density.nu
+    ## Likelihood computation
     ## ---------------------------------------------------- ##
-    nu.st <- tau.st
-    for (g in 1:mcmc) {
-      for (j in 1:ns) {
-        nu.st[j] <- tau.st[j]^(-alphadraws[g, j])
-        shape.g <- nu.shape + K / alphadraws[g, j]
-        rate.g <- nu.rate + sum(abs(betadraws[g, K * (j - 1) + 1:K])^alphadraws[g, j])
+    marker <- 1
+    resid <- loglike.t <- rep(NA, NT)
+    bi.st <- bi
+    for (i in 1:N) {
+        for (j in 1:ns) {
+            ej <- as.numeric(is.element(time.id, which(state == j)) & subject.id == i)
+            nj <- sum(ej)
+            if (nj > 0) {
+                yj <- matrix(y[ej == 1], nj, 1)
+                Xj <- matrix(X[ej == 1, ], nj, K)
+                unscaled.yj <- matrix(unscaled.Y[ej == 1], nj, 1)
+                unscaled.Xj <- matrix(unscaled.X[ej == 1, ], nj, K)
+                if (fixed) {
+                    mu.state.st <- Xj %*% beta.st[j, ]
+                    mu.state.unscaled <- unscaled.Xj %*% beta.st[j, ]
+                } else {
+                    Wj <- matrix(W[ej == 1, ], nj, Q)
+                    ehatj <- yj - Xj %*% beta.st[j, ]
+                    V <- chol2inv(chol(Dinv[[j]] + t(Wj) %*% Wj / sig2[j]))
+                    U <- chol(V)
+                    Mu <- V %*% (t(Wj) %*% ehatj) / sig2[j]
+                    bi.st[[j]] <- drop(Mu + t(U) %*% rnorm(Q)) ## as.vector(rmvnorm(1, post.bi.mean, post.bi.var))
+                    mu.state.st <- Xj %*% beta.st[j, ] + Wj %*% bi.st[[j]]
+                    ## unscaled.W must be considered here....later...JHP
+                }
+                ## Likelihood computation
+                loglike.t[marker:(marker + nj - 1)] <- dnorm(yj, mean = mu.state.st, sd = sqrt(sig2.st[j]), log = TRUE)
+                resid[marker:(marker + nj - 1)] <- yj - mu.state.st
+            }
+            marker <- marker + nj
+        }
+    }
+    loglike <- sum(loglike.t)
+    
+    cat("\n---------------------------------------------- \n ")
+    cat("Likelihood computation \n")
+    cat("    loglike: ", as.numeric(loglike), "\n")
+    cat("---------------------------------------------- \n ")
+    
+    ## ---------------------------------------------------- ##
+    ## Marginal Likelihood Estimation starts here!
+    ## ---------------------------------------------------- ##
+    if (marginal) {
+        ## holders
+        density.sig2.holder <- density.nu.holder <- density.D.holder <- matrix(NA, mcmc, ns)
+        
+        ## ---------------------------------------------------- ##
+        ## Marginal Step 1. density.nu
+        ## ---------------------------------------------------- ##
+        nu.st <- tau.st
+        for (g in 1:mcmc) {
+            for (j in 1:ns) {
+                nu.st[j] <- tau.st[j]^(-alphadraws[g, j])
+                shape.g <- nu.shape + K / alphadraws[g, j]
+                rate.g <- nu.rate + sum(abs(betadraws[g, K * (j - 1) + 1:K])^alphadraws[g, j])
         density.nu.holder[g, j] <- dgamma(nu.st[j], shape.g, rate = rate.g)
       }
     }
@@ -1122,9 +1160,13 @@ BridgeMixedPanel <- function(
   runtime <- (end.time - start.time)[1]
   Waic.out <- NULL
   if (Waic == TRUE) {
-    ## Waic computation
+      ## Waic computation
+      if(sum(is.na(Z.loglike.array))>0){
+          cat("\nwaic is computed after removing NAs from p(\theta_st | y).\n")
+          Z.loglike.array <- ifelse(is.na(Z.loglike.array), 0, Z.loglike.array)
+      }
     Waic.out <- waic_calc(Z.loglike.array)$total
-    rm(Z.loglike.array)
+    ## rm(Z.loglike.array)
 
     cat("\n----------------------------------------------", "\n")
     cat("\tWaic: ", Waic.out[1], "\n")
@@ -1230,18 +1272,41 @@ BridgeMixedPanel <- function(
     attr(output, "y.all") <- y
     attr(output, "X.all") <- X
     attr(output, "m") <- m
-    attr(output, "intercept") <- coda::mcmc(beta0draws, start = burn + 1, end = burn + mcmc, thin = thin)
+    if(intercept){
+        attr(output, "intercept") <- coda::mcmc(beta0draws, start = burn + 1, end = burn + mcmc, thin = thin)
+    }
+    attr(output, "Z.loglike.array") <- Z.loglike.array
     attr(output, "nsubj") <- nsubj
     attr(output, "ntime") <- ntime
     attr(output, "alpha") <- coda::mcmc(data = alphadraws, start = burn + 1, end = burn + mcmc, thin = thin)
     attr(output, "tau") <- coda::mcmc(data = taudraws, start = burn + 1, end = burn + mcmc, thin = thin)
     attr(output, "random.perturb") <- random.perturb / totiter
     if (m > 0) {
+            
         attr(output, "s.store") <- s.holder
-        prob.state <- cbind(sapply(1:ns, function(k) {
-            apply(s.holder == k, 2, mean)
-        }))
+        prob.state <- cbind(sapply(1:ns, function(k){apply(s.holder == k, 2, mean)}))
         attr(output, "prob.state") <- prob.state
+        ## prob.state <- cbind(sapply(1:ns, function(k) {
+        ##    apply(s.holder == k, 2, mean)
+        ## }))
+        beta.mean <- matrix(apply(betadraws, 2, mean), K, ns)
+        beta.lower <- matrix(apply(betadraws, 2, quantile, 0.025), K, ns)
+        beta.upper <- matrix(apply(betadraws, 2, quantile, 0.975), K, ns)
+        
+        df.beta1 <- data.frame(prob.state %*%  t(beta.mean))
+        df.beta2 <- data.frame(prob.state %*%  t(beta.lower))
+        df.beta3 <- data.frame(prob.state %*%  t(beta.upper))
+
+        df.beta1$type <- "mean"
+        df.beta2$type <- "lower"
+        df.beta3$type <- "upper"
+
+        df.beta <- bind_rows(df.beta1, df.beta2, df.beta3)
+        colnames(df.beta) <- stringr::str_replace(colnames(df.beta), "X", "beta")
+        attr(output, "beta.varying") <-  df.beta
+        
+     
+        ## attr(output, "prob.state") <- prob.state
         attr(output, "lambda") <- output4
     }
     attr(output, "Waic.out") <- Waic.out

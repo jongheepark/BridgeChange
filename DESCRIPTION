@@ -15,9 +15,11 @@ Depends:
     copula,
     MCMCpack, 
     mvtnorm,
+    colorspace,
     plm,
     Rcpp (>= 0.12.11), 
     tidyr,
+    dplyr,
     RcppArmadillo
 Imports:
     coda (>= 0.11-3),

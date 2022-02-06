@@ -36,6 +36,7 @@ BridgeMixedPanel(
   Waic = FALSE,
   marginal = FALSE,
   fixed = TRUE,
+  beta.alg = "CHL",
   unscaled.Y,
   unscaled.X
 )
@@ -103,6 +104,10 @@ usual panel model is run with shrinkage prior on coefficients.}
 \item{marginal}{\code{= FALSE}}
 
 \item{fixed}{\code{= TRUE} If \code{= TRUE}, the fixed effects model is chosen as a baseline model.}
+
+\item{beta.alg}{An algorithm to sample beta.
+Default is \code{beta.alg = "BCK"}.
+Also supported is the traditional sampler based on the Cholesky decomposition: \code{beta.alg = "CHL"}.}
 
 \item{D.start=}{NA}
 }

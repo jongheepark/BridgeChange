@@ -4,8 +4,8 @@
 #'
 #' Univariate response linear change-point model with Bridge prior.
 #' @name BridgeChangeReg
-#' @param y Outcome vector.
-#' @param X
+#' @param fomula Inherited from \code{lm}. For example, \code{Y ~ X + Z}.
+#' @param data Data.frame object.
 #' Design matrix. Columns correspond to variables.
 #' @param intercept
 #' A boolean. If \code{TRUE}, estimate intercept by MLE. The estimated intercept is used to detect breaks.
@@ -15,18 +15,23 @@
 #' The number of change-point(s).
 #' If \code{n.break = 0}, the model corresponds to the usual regression.
 #' Default is \code{n.break = 0}.
-#' @param scale.data
+#' @param standardize
 #' If \code{TRUE}, \code{y} and \code{X} are both scaled to have zero mean and unit variance.
 #' Default is \code{TRUE}.
 #' We recommend \code{scale.data = TRUE} unless the original data are already scaled.
-#' @param mcmc
-#' The number of iterations for gibbs updates. Default is 100.
-#' @param burn
-#' The number of burn-in periods for gibbs updates. Default is 100.
-#' @param verbose
-#' Iterations at which the results are printed on the console. Default is every 100th iteration.
-#' @param thin
-#' Thinning for gibbs updates. Default is 1 (no thinning).
+#' @param burnin The number of burn-in iterations for the sampler.
+#'
+#' @param mcmc The number of MCMC iterations after burn-in.
+#'
+#' @param thin The thinning interval used in the simulation.  The
+#'   number of MCMC iterations must be divisible by this value.
+#'
+#' @param verbose A switch which determines whether or not the
+#'   progress of the sampler is printed to the screen.  If
+#'   \code{verbose} is greater than 0, the iteration number and the
+#'   posterior density samples are printed to the screen every
+#'   \code{verbose}th iteration.
+#'
 #' @param reduce.mcmc The number of reduced MCMC iterations for marginal likelihood computations.
 #' If \code{reduce.mcmc = NULL}, \code{mcmc/thin} is used.
 #' @param c0
@@ -68,7 +73,17 @@
 #' @param marginal
 #' If \code{TRUE}, the marginal likelihood is computed based on Chib's method.
 #' Default is \code{FALSE}.
+#' @param a \eqn{a} is the shape1 beta prior for transition
+#'   probabilities.  By default, the expected duration is computed and
+#'   corresponding a and b values are assigned. The expected duration
+#'   is the sample period divided by the number of states.
 #'
+#' @param b \eqn{b} is the shape2 beta prior for transition
+#'   probabilities.  By default, the expected duration is computed and
+#'   corresponding a and b values are assigned. The expected duration
+#'   is the sample period divided by the number of states.
+#'
+#' 
 #' @return
 #' An mcmc object that contains the posterior sample of coefficients and variances as columns.
 #'  Rows correspond to mcmc samples. This object can be summarized by functions provided by the coda package.
@@ -80,47 +95,54 @@
 #' @example examples/reg_eg.R
 #' @export
 #'
-BridgeChangeReg <- function(y, X,                   # inputs
-  n.break = 0,                                      # number of breaks
-  scale.data = TRUE,  intercept = TRUE,             # data transformations
-  mcmc = 100, burn = 100, verbose = 100, thin = 1,  # mcmc related args
-  reduce.mcmc = NULL,
-  c0 = 0.1, d0 = 0.1, nu.shape = 2.0, nu.rate = 2.0,# priors / hyper params
-  known.alpha = FALSE, alpha.start = 1,             # alpha related args
-  alpha.limit = FALSE, alpha.MH = TRUE,
-  beta.start = NULL, beta.alg = "BCK",              # beta realted args
-  Waic = FALSE, marginal = FALSE                    # model selection args
-) {
+BridgeChangeReg <- function(formula, data = parent.frame(),                   # inputs
+                            n.break = 0,                                      # number of breaks
+                            standardize = TRUE,  intercept = TRUE,             # data transformations
+                            mcmc = 100, burn = 100, verbose = 100, thin = 1,  # mcmc related args
+                            reduce.mcmc = NULL, a =  NULL,  b = NULL, 
+                            c0 = 0.1, d0 = 0.1, nu.shape = 2.0, nu.rate = 2.0,# priors / hyper params
+                            known.alpha = FALSE, alpha.start = 1,             # alpha related args
+                            alpha.limit = FALSE, alpha.MH = TRUE,
+                            beta.start = NULL, beta.alg = "BCK",              # beta realted args
+                            Waic = FALSE, marginal = FALSE                    # model selection args
+                            ) {
+    
+    ## ---------------------------------------------------- ##
+    ##                preparing inputs                      ##
+    ## ---------------------------------------------------- ##
+    ## time stamp
+    start.time <- proc.time(); call <- match.call()
+    
+    ## data transoformation
+    holder <- MCMCpack:::parse.formula(formula, data = data)
+    y <- holder[[1]]
+    X <- holder[[2]][,-1]
 
-  ## ---------------------------------------------------- ##
-  ##                preparing inputs                      ##
-  ## ---------------------------------------------------- ##
-  ## time stamp
-  start.time <- proc.time(); call <- match.call()
+    X <- Xorig  <- as.matrix(X);
+    resid <- NULL
+    
+    y.sd <- sd(y)
+    X.sd <- apply(X, 2, sd)
 
-  ## data transoformation
-  X <- Xorig  <- as.matrix(X);
-  resid <- NULL
-
-  y.sd <- sd(y)
-  X.sd <- apply(X, 2, sd)
-
-  ## scaling first
-  if (scale.data) {
-    ydm <- scale(y)
-    X   <- scale(X)
-  }else{
-    ydm <- y
-  }
-
-  ## common quantities
-  K      <- ncol(X); ntime  <- length(y)
-  m      <- n.break; ns     <- m + 1
-  nstore <- mcmc / thin
-
-  ## prior for transition matrix
-  a <- NULL; b <- NULL
-
+    unscaled.Y <- y
+    unscaled.X <- X
+        
+    if (standardize) { 
+      ydm <- scale(y)
+      X   <- scale(X)
+    }else{
+        ydm <- y
+    }
+    
+    
+    ## common quantities
+    K      <- ncol(X); ntime  <- length(y)
+    m      <- n.break; ns     <- m + 1
+    nstore <- mcmc / thin
+    
+    ## prior for transition matrix
+    
+ 
   ## ---------------------------------------------------- ##
   ##                   initialization                     ##
   ## ---------------------------------------------------- ##
@@ -248,7 +270,8 @@ BridgeChangeReg <- function(y, X,                   # inputs
         sig2[j] <- draw.sig2(beta = beta[j,], x=Xj, y=yj, c0, d0)
         XX[[j]] <- crossprod(Xj, Xj)
         XY[[j]] <- crossprod(Xj, yj)
-        Xm[[j]] <- Xj; Ym[[j]] <- yj
+        Xm[[j]] <- Xj;
+        Ym[[j]] <- yj
       }
     } else {
       sig2[1] <- draw.sig2(beta=beta[1,], x = X, y = ydm, c0, d0)
@@ -262,21 +285,21 @@ BridgeChangeReg <- function(y, X,                   # inputs
     ## ---------------------------------------------------- ##
     for (j in 1:ns){
       for(k in 1:K){
-        lambda[j, k] =  2*retstable(0.5 * alpha[j], 1.0, beta[j, k]^2 / tau[j]^2, method="LD");
+          lambda[j, k] <- 2 * retstable(0.5 * alpha[j], 1.0, (beta[j, k]/ tau[j])^2, method = "LD")
       }
     }
 
     ## ---------------------------------------------------- ##
     ## Step 4: beta
     ## ---------------------------------------------------- ##
-    if (beta.alg %in% c("BCK")) {
-      beta <- draw_beta_BCK_cpp(Xm, Ym, lambda, sig2, tau, ns, K)
-    } else if (beta.alg %in% c("CHL")){
-      beta <- draw_beta_cpp(Xm, Xm, lambda, sig2, tau, ns, K)
-    } else {
-      stop("This algorithm is not supported. Please read the documentation on beta.alg!\n")
-    }
-
+      if (beta.alg %in% c("BCK")) {
+          beta <- draw_beta_BCK_cpp(Xm, Ym, lambda, sig2, tau, ns, K)
+      } else if (beta.alg %in% c("CHL")) {
+          beta <- draw_beta_cpp(XX, XY, lambda, sig2, tau, ns, K)
+      } else{
+          stop("beta.alg is an unknown form.\n")
+      }
+      
 
     ## ---------------------------------------------------- ##
     ## Step 5: alpha

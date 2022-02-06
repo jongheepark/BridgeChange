@@ -9,6 +9,7 @@ BridgeChangeSim(
   predictor = 100,
   rho = 0,
   time.series = FALSE,
+  standardize = TRUE,
   sign.change.tune = 2,
   sigma1 = 1,
   sigma2 = 2,
