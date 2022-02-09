@@ -40,23 +40,30 @@ library("pcse")
 set.seed(1999)
 data("agl")
 data = agl
-model = "within"
-index = c('country', 'year')
-effect = 'time'
-formula <- growth ~ lagg1 + opengdp + openex + openimp + leftc + central + inter
 ```
 
+
+
+## Fit the one-way (time) fixed effect model using plm
 The following two `model` arguments are availabel for the fixed-effects HMBB.
 - the fixed effects model (`"within"`), the default,
 - the pooling model (`"pooling"`),
 
-
-## Inspect data 
+We will use the one-way (time) fixed effect model because the original model has a time-invariant covariate (central).
 ```{r, message=FALSE,warning=FALSE}
+model = "within"
+index = c('country', 'year')
+effect = 'time'
+formula <- growth ~ lagg1 + opengdp + openex + openimp + leftc * central
 pdata   <- pdata.frame(data, index)
 pm <- plm(formula, data = pdata, model = model, effect = effect)
 summary(pm)
+```
 
+
+## Inspect the model (response and residuals)
+We take a look at the response data and panel residuals to check the sign of misfit due to time-varying effects. 
+```{r}
 ## response
 plot(pdata$growth)
 
@@ -67,6 +74,7 @@ coplot(pm$residuals ~ pdata[,index[2]]|pdata[,index[1]], data=pdata, ## number=l
 ```
 
 ## Fitting HMBB
+We fit three HMBBs with no break, one break, and two breaks to see whether effects of covariates change over time. To save time, we set mcmc = 100 here. `BridgeFixedPanel` transforms the panel data using `plm` arguments of `model`, `effect` and `index` first. Then, it fits HMBB on the transformed data. `n.break` sets the number of break to be estimated. 
 ```{r}
 mcmc = 100; burn = 100; verbose = 100; thin = 1;
 formula <- growth ~ lagg1 + opengdp + openex + openimp + leftc + central + inter
@@ -84,16 +92,22 @@ agl.cp2 <- BridgeFixedPanel(formula=formula, data = data,
                             n.break = 2)
 ```
 
+After fitting multiple models, we can compare their model-fits using WAIC. `WaicCompare` shows WAIC scores for a list of models. `plotWaic()` draws a plot of WAIC scores.
 ```{r}
 ## model selection by WAIC
 waic <- WaicCompare(list(agl.cp0, agl.cp1, agl.cp2), print = TRUE)
 plotWaic(waic)
+```
 
+In addition to WAIC, we compare transitions of hidden states. `plotState` in MCMCpack can be used to draw hidden state transitions. 
+```{r}
 ## state changes
 par(mfrow=c(1, 2))
 plotState(agl.cp1, start=1970, legend.control =c(1970, 0.85), main="One break")
 plotState(agl.cp2, start=1970, legend.control =c(1970, 0.85), main="Two breaks")
 ```
+
+The one break model looks good. We check the time-varying movements of the one break model using `dotplotRegime`. 
 ```{r}
 ## all covariates
 dotplotRegime(agl.cp1, hybrid=FALSE, start = 1970, location.bar=12, x.location="default",
@@ -101,11 +115,14 @@ dotplotRegime(agl.cp1, hybrid=FALSE, start = 1970, location.bar=12, x.location="
 ## label as a legend
 dotplotRegime(agl.cp1, hybrid=FALSE, start = 1970, location.bar=12, x.location="legend",
               text.cex=0.8, main="Time-varying Movements of All Covariates")
+```
 
+We visualize the movement of the selected covariate using `select` argument in `dotplotRegime()`. Here we choose the left-party government-related variable. 
+```{r}
 ## leftc only
 ## select works like grep()
 dotplotRegime(agl.cp1, hybrid=FALSE, start = 1970, location.bar=12, x.location="static",
-              text.cex=0.8, select="left", main=("Time-varying Movements of Left Party"))
+              text.cex=0.8, select="left", main=("Left party-related covariates"))
 
 ```
 
