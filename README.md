@@ -56,74 +56,26 @@ pm <- plm(formula, data = pdata, model = model, effect = effect)
 ## plot of panel residuals 1
 coplot(pm$residuals ~ pdata[,index[2]]|pdata[,index[1]], data=pdata, 
        overlap=.1, col="brown", type="l", panel = panel.smooth, xlab="panel residuals by group and time")
-
-## plot of panel residuals 2
-coplot(pm$residuals ~ pdata[,index[2]]|pdata[,index[1]], type="b", data=pdata)
-
 ```
 
-<img src="man/figures/README-unnamed-chunk-2-2.png" width="100%" />
 
 ``` r
 ##
 ## fit models 
 ##
 
-# set mcmc parameters 
-mcmc <- burn <- 500; thin <- 1; verbose <- 500
+mcmc = 100; burn = 100; verbose = 100; thin = 1;
+formula <- growth ~ lagg1 + opengdp + openex + openimp + leftc + central + inter
+agl.cp0 <- BridgeFixedPanel(formula=formula, data = data, model = model, index = index, effect = effect,
+                            mcmc=mcmc, verbose=verbose, Waic = TRUE, 
+                            n.break = 0)
+agl.cp1 <- BridgeFixedPanel(formula=formula, data = data, model = model, index = index, effect = effect,
+                            mcmc=mcmc, verbose=verbose, Waic = TRUE, 
+                            n.break = 1)
+agl.cp2 <- BridgeFixedPanel(formula=formula, data = data, model = model, index = index, effect = effect,
+                            mcmc=mcmc, verbose=verbose, Waic = TRUE, 
+                            n.break = 2)
 
-# fit no-break model
-set.seed(11173)
-out0 <- BridgeChangeReg(y=out$y, X=out$x, scale.data=TRUE, intercept=TRUE,
-                        mcmc=mcmc, burn = burn, thin=thin, verbose=verbose,
-                        alpha.MH=TRUE, n.break = 0, waic=TRUE)
-#> 
-#> ----------------------------------------------------
-#> MCMC Sampling of BridgeChangeReg Starts! 
-#> ----------------------------------------------------
-#> 
- Estimating parameters. Now at 500 of 1000
- Estimating parameters. Now at 1000 of 1000
-#> ----------------------------------------------------
-#> WAIC:  242.6075 
-#> Run time:  7.687 
-#> ----------------------------------------------------
-
-# fit one-break model 
-set.seed(11173)
-out1 <- BridgeChangeReg(y=out$y, X=out$x, scale.data=TRUE,intercept=TRUE,
-                        mcmc=mcmc, burn = burn, thin=thin, verbose=verbose,
-                        alpha.MH=TRUE, n.break = 1, waic=TRUE)
-#> 
-#> ----------------------------------------------------
-#> MCMC Sampling of BridgeChangeReg Starts! 
-#> Initial state =  37 63 
-#> ----------------------------------------------------
-#> 
- Estimating parameters. Now at 500 of 1000
- Estimating parameters. Now at 1000 of 1000
-#> ----------------------------------------------------
-#> WAIC:  31.34521 
-#> Run time:  13.405 
-#> ----------------------------------------------------
-
-# fit one-break model 
-set.seed(11173)
-out2 <- BridgeChangeReg(y=out$y, X=out$x, scale.data=TRUE,intercept=TRUE,
-                        mcmc=mcmc, burn = burn, thin=thin, verbose=verbose,
-                        alpha.MH=TRUE, n.break = 2, waic=TRUE)
-#> 
-#> ----------------------------------------------------
-#> MCMC Sampling of BridgeChangeReg Starts! 
-#> Initial state =  27 32 41 
-#> ----------------------------------------------------
-#> 
- Estimating parameters. Now at 500 of 1000
- Estimating parameters. Now at 1000 of 1000
-#> ----------------------------------------------------
-#> WAIC:  56.21819 
-#> Run time:  19.578 
-#> ----------------------------------------------------
 ```
 
 ``` r
@@ -131,19 +83,11 @@ out2 <- BridgeChangeReg(y=out$y, X=out$x, scale.data=TRUE,intercept=TRUE,
 ## Post-estimation 
 ##
 
-# model selection by waic 
-waic <- WaicCompare(list(out0, out1, out2), print = TRUE)
-#> 
-#> Selected model = break 1 
-#> 
-#> break 0 break 1 break 2 
-#> 242.607  31.345  56.218
+## model selection by WAIC
+waic <- WaicCompare(list(agl.cp0, agl.cp1, agl.cp2), print = TRUE)
+plotWaic(waic)
 
-
-# state transition plot (provided by `MCMCpack`)
-par(mfrow = c(1,2), mar = c(4, 2.5, 3.5, 1))
-MCMCpack::plotState(out1)
-MCMCpack::plotState(out2)
+par(mfrow=c(1, 2))
+MCMCpack::plotState(agl.cp1, start=1970, legend.control =c(1970, 0.85), main="One break")
+MCMCpack::plotState(agl.cp2, start=1970, legend.control =c(1970, 0.85), main="Two breaks")
 ```
-
-<img src="man/figures/README-unnamed-chunk-4-1.png" width="100%" />
