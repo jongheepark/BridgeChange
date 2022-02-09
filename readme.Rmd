@@ -107,7 +107,7 @@ plotState(agl.cp1, start=1970, legend.control =c(1970, 0.85), main="One break")
 plotState(agl.cp2, start=1970, legend.control =c(1970, 0.85), main="Two breaks")
 ```
 
-The one break model looks good. We check the time-varying movements of the one break model using `dotplotRegime`. 
+The one break model looks good. We check the time-varying movements of the one break model using `dotplotRegime()`. Colors in `dotplotRegime()` are determined by the size of coefficients in the first regime. Red means positive, blue means negative, and grey means close to 0 in the first regime.
 ```{r}
 ## all covariates
 dotplotRegime(agl.cp1, hybrid=FALSE, start = 1970, location.bar=12, x.location="default",

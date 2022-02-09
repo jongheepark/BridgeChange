@@ -134,7 +134,7 @@ agl.cp0 <- BridgeFixedPanel(formula=formula, data = data,
 #>  
 #> ---------------------------------------------- 
 #>  Waic:  668.6554 
-#>  run time:  0.863 
+#>  run time:  0.843 
 #> ----------------------------------------------
 agl.cp1 <- BridgeFixedPanel(formula=formula, data = data, 
                             model = model, index = index, effect = effect,
@@ -167,7 +167,7 @@ agl.cp1 <- BridgeFixedPanel(formula=formula, data = data,
 #>  
 #> ---------------------------------------------- 
 #>  Waic:  644.8722 
-#>  run time:  1.7 
+#>  run time:  1.635 
 #> ----------------------------------------------
 agl.cp2 <- BridgeFixedPanel(formula=formula, data = data, 
                             model = model, index = index, effect = effect,
@@ -202,7 +202,7 @@ agl.cp2 <- BridgeFixedPanel(formula=formula, data = data,
 #>  
 #> ---------------------------------------------- 
 #>  Waic:  643.1039 
-#>  run time:  2.396 
+#>  run time:  2.356 
 #> ----------------------------------------------
 ```
 
@@ -235,7 +235,10 @@ plotState(agl.cp2, start=1970, legend.control =c(1970, 0.85), main="Two breaks")
 <img src="man/figures/README-unnamed-chunk-7-1.png" width="100%" />
 
 The one break model looks good. We check the time-varying movements of
-the one break model using `dotplotRegime`.
+the one break model using `dotplotRegime()`. Colors in `dotplotRegime()`
+are determined by the size of coefficients in the first regime. Red
+means positive, blue means negative, and grey means close to 0 in the
+first regime.
 
 ``` r
 ## all covariates
