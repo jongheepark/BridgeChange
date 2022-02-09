@@ -59,7 +59,7 @@ BridgeRandomPanel <- function(formula, data, random=NULL, index,
                               interaction = 1, a = NULL, b = NULL,
                               n.break = 1, alpha.MH = FALSE,
                               mcmc = 100, burn = 100, verbose = 100, thin = 1,
-                              b0=0, B0=1, c0 = 0.1, d0 = 0.1, r0 =  1, R0 = 1,
+                              c0 = 0.1, d0 = 0.1, r0 =  1, R0 = 1,
                               nu.shape = 2.0, nu.rate = 2.0, alpha = 1,
                               Waic = FALSE, marginal = FALSE) {
     call <- match.call()
@@ -140,9 +140,11 @@ BridgeRandomPanel <- function(formula, data, random=NULL, index,
     ## ---------------------------------------------------- ##
     output <- BridgeMixedPanel(subject.id = subject.id, time.id = time.id, n.break = n.break, 
                                mcmc = mcmc, burn = burn, thin = thin, verbose = verbose,
-                               y = as.vector(y),  X = X, W = W, standardize = FALSE, alpha.MH = alpha.MH, 
-                               b0 = b0, B0 = B0, r0 = r0, R0 = R0, c0=c0, d0=d0,
-                               nu.shape = 2.0, nu.rate = 2.0, alpha = 1, Waic = Waic, marginal = marginal, 
+                               y = as.vector(y),  X = X, W = W,
+                               standardize = FALSE, alpha.MH = alpha.MH, 
+                               r0 = r0, R0 = R0, c0=c0, d0=d0,
+                               nu.shape = 2.0, nu.rate = 2.0, alpha = 1,
+                               Waic = Waic, marginal = marginal, 
                                unscaled.Y = unscaled.Y, unscaled.X = unscaled.X)
 
     

@@ -34,13 +34,13 @@ coplot(pm$residuals ~ pdata[,index[2]]|pdata[,index[1]], type="b", data=pdata)
 mcmc = 100; burn = 100; verbose = 100; thin = 1;
 formula <- growth ~ lagg1 + opengdp + openex + openimp + leftc + central + inter
 agl.cp0 <- BridgeFixedPanel(formula=formula, data = data, model = model, index = index, effect = effect,
-                            mcmc=mcmc, , verbose=verbose, Waic = TRUE, 
+                            mcmc=mcmc, verbose=verbose, Waic = TRUE, 
                             n.break = 0)
 agl.cp1 <- BridgeFixedPanel(formula=formula, data = data, model = model, index = index, effect = effect,
-                            mcmc=mcmc, , verbose=verbose, Waic = TRUE, 
+                            mcmc=mcmc, verbose=verbose, Waic = TRUE, 
                             n.break = 1)
 agl.cp2 <- BridgeFixedPanel(formula=formula, data = data, model = model, index = index, effect = effect,
-                            mcmc=mcmc, , verbose=verbose, Waic = TRUE, 
+                            mcmc=mcmc, verbose=verbose, Waic = TRUE, 
                             n.break = 2)
 
 ## model selection by WAIC

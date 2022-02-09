@@ -52,7 +52,7 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
                              n.break = 1, ols.weight = FALSE, sparse.only = FALSE,
                              alpha.MH = FALSE,
                              mcmc = 100, burn = 100, verbose = 100, thin = 1,
-                             b0=0, B0=1, c0 = 0.1, d0 = 0.1, r0 =  1, R0 = 1,
+                             c0 = 0.1, d0 = 0.1, r0 =  1, R0 = 1,
                              nu.shape = 2.0, nu.rate = 2.0, alpha = 1,
                              Waic = FALSE, marginal = FALSE) {
     call <- match.call()
@@ -139,10 +139,11 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
         output <- NA
     }else{
         output <- BridgeMixedPanel(subject.id = subject.id, time.id = time.id, y=as.vector(y), X=X, W=W,
-                                   n.break = n.break, b0=b0, B0=B0, c0=c0, d0=d0, r0=r0, R0=R0,
+                                   n.break = n.break, c0=c0, d0=d0, r0=r0, R0=R0,
                                    standardize = FALSE, alpha.MH=alpha.MH,
                                    mcmc = mcmc, burn = burn, thin = thin, verbose=verbose,
-                                   nu.shape = 2.0, nu.rate = 2.0, alpha = 1, Waic = Waic, marginal = marginal, fixed = TRUE,
+                                   nu.shape = 2.0, nu.rate = 2.0, alpha = 1,
+                                   Waic = Waic, marginal = marginal, fixed = TRUE,
                                    unscaled.Y = unscaled.Y, unscaled.X = unscaled.X)
     }
     ## data preparation for regime-wise regression
@@ -259,6 +260,7 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
 
 
     }else{
+        ## no break case
         if(sparse.only){
             dat.id <- subject.id
                ## group centering muted if pooling
@@ -290,7 +292,7 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
                     dat.id <- time.id
                     dat.x <- as.matrix(X)
                     dat.y <- as.matrix(yhat)
-              }else{
+                }else{
                     dat.x <- as.matrix(group.center(X, dat.id))
                     dat.y <- as.matrix(group.center(matrix(yhat), dat.id))
                 }
@@ -311,7 +313,7 @@ BridgeFixedPanelHybrid <- function(formula, data, index, model, effect,
                 hybrid.cp <- matrix(adaptive.lasso(raw.y, dat.x, beta.mean), ncol(X), 1)
                 rownames(hybrid.cp) <- colnames(X)
             }
-            i = 1
+            
             R2.DSS <- r.square.sparse(y = raw.y, yhat = yhat, x = X,
                                       beta.sparse = hybrid.dss, s2.mean)
             R2.CP <- r.square.sparse(y = raw.y, yhat = yhat, x = X,

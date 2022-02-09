@@ -19,8 +19,6 @@ BridgeRandomPanel(
   burn = 100,
   verbose = 100,
   thin = 1,
-  b0 = 0,
-  B0 = 1,
   c0 = 0.1,
   d0 = 0.1,
   r0 = 1,

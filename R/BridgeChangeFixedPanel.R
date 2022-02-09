@@ -61,7 +61,7 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
                              a = NULL, b = NULL,
                              n.break = 1, alpha.MH = FALSE,
                              mcmc = 100, burn = 100, verbose = 100, thin = 1,
-                             b0=0, B0=1, c0 = 0.1, d0 = 0.1, r0 =  1, R0 = 1,
+                             c0 = 0.1, d0 = 0.1, r0 =  1, R0 = 1,
                              nu.shape = 2.0, nu.rate = 2.0, alpha = 1,
                              Waic = FALSE, marginal = FALSE) {
     call <- match.call()
@@ -85,6 +85,12 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
     suppressWarnings(X <- plm:::model.matrix.pFormula(pformula, pdata, rhs = 1, model = model, effect = effect))
     suppressWarnings(y <- plm:::pmodel.response(pformula, pdata, model = model, effect = effect))
 
+    ## Drop covariates with all zero
+    if(sum(apply(X, 2, sd) == 0)>0){
+        cat("Some interactions (", sum(apply(X, 2, sd) == 0) , ") are all zero. So they are removed!\n")
+        X <- X[, apply(X, 2, sd)!=0]
+    }
+    
     unscaled.Y <- y
     unscaled.X <- X
 
@@ -115,6 +121,7 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
             colnames(newX[[j]]) <- c(combn(var.names, j, paste, collapse="-"))
         }
         X <- Reduce(cbind, newX)
+        
         ## Drop covariates with all zero
         if(sum(apply(X, 2, sd) == 0)>0){
             cat("Some interactions (", sum(apply(X, 2, sd) == 0) , ") are all zero. So they are removed!\n")
@@ -129,10 +136,11 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
     ## run change point model on demeaned data
     ## ---------------------------------------------------- ##
     output <- BridgeMixedPanel(subject.id = subject.id, time.id = time.id, y=as.vector(y), X=X, W=W,
-                               n.break = n.break, b0=b0, B0=B0, c0=c0, d0=d0, r0=r0, R0=R0,
+                               n.break = n.break, c0=c0, d0=d0, r0=r0, R0=R0,
                                standardize = FALSE, alpha.MH = alpha.MH, 
                                mcmc = mcmc, burn = burn, thin = thin, verbose=verbose, 
-                               nu.shape = 2.0, nu.rate = 2.0, alpha = 1, Waic = Waic, marginal = marginal, fixed = TRUE,
+                               nu.shape = 2.0, nu.rate = 2.0, alpha = 1, Waic = Waic,
+                               marginal = marginal, fixed = TRUE,
                                unscaled.Y = unscaled.Y, unscaled.X = unscaled.X)
 
     attr(output, "title")  <- "BridgeChangeFixedPanel Posterior Sample"

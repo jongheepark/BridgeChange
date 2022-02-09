@@ -10,9 +10,12 @@ dotplotRegime(
   start = 1,
   cex = 1,
   smooth.beta = TRUE,
-  x.location = c("random", "legend", "default"),
+  x.location = c("none", "random", "legend", "default"),
   order.state = 1,
   location.bar = 9,
+  distance = 4,
+  h = c(255, 330),
+  l = c(40, 90),
   text.cex = 1,
   legend.position = "topright",
   pos = 1,
@@ -32,6 +35,12 @@ dotplotRegime(
 
 \item{x.location}{x location of covariate name labels. If random, a random value (between min and max of x) is selected.
 If legend, it will be displayed in the top-right as a legend. If default, the labels will be shown in the above of the last regime estimates.}
+
+\item{distance}{Distance of text labels from the maximum value of x. Default is 4.}
+
+\item{h}{hue value in the HCL color description, has to be in [0, 360]. Default is c(255, 330).}
+
+\item{l}{luminance value in the HCL color description. Default is c(40, 90).}
 
 \item{thin}{The thinning interval used in the simulation.  The number of
 MCMC iterations must be divisible by this value.}

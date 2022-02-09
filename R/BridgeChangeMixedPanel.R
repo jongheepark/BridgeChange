@@ -23,8 +23,6 @@
 #' @param burn =100
 #' @param verbose =100 Verbose
 #' @param thin Thinning
-#' @param b0 Hyperparam
-#' @param B0 Hyperparam
 #' @param c0 = 0.1
 #' @param d0 = 0.1
 #' @param r0 Hyperparam
@@ -45,10 +43,10 @@
 #' @param Waic \code{= TRUE} If \code{= TRUE}, compute WAIC and store as "Waic.out." Retrieve using attr().
 #' @param marginal \code{= FALSE}
 #' @param fixed \code{= TRUE} If \code{= TRUE}, the fixed effects model is chosen as a baseline model.
-#' @param beta.alg
-#' An algorithm to sample beta.
-#' Default is \code{beta.alg = "BCK"}.
-#' Also supported is the traditional sampler based on the Cholesky decomposition: \code{beta.alg = "CHL"}.
+## #' @param beta.alg
+## #' An algorithm to sample beta.
+## #' Default is \code{beta.alg = "BCK"}.
+## #' Also supported is the traditional sampler based on the Cholesky decomposition: \code{beta.alg = "CHL"}.
 #'
 #' @return output
 #'
@@ -65,11 +63,11 @@ BridgeMixedPanel <- function(
                              standardize = TRUE,
                              n.break = 1, intercept = FALSE,
                              mcmc = 100, burn = 100, verbose = 100, thin = 1,
-                             b0, B0, c0 = 0.1, d0 = 0.1, r0, R0, a = NULL, b = NULL,
+                             c0 = 0.1, d0 = 0.1, r0, R0, a = NULL, b = NULL,
                              nu.shape = 2.0, nu.rate = 2.0, alpha = 1, alpha.MH = FALSE,
                              beta.start = NULL, sigma2.start = NA, D.start = NA, P.start = NA,
                              Waic = FALSE, marginal = FALSE, fixed = TRUE,
-                             beta.alg = "CHL",   
+                             ## beta.alg = "CHL",   
                              unscaled.Y, unscaled.X
                              ) {
     
@@ -178,7 +176,7 @@ BridgeMixedPanel <- function(
         }
     } else {
         ## if p > n, set p = n - 1 for ols initialization
-        ols <- lm(Y ~ X[, 2:length(y)])
+        ols <- lm(Y ~ X[, sample(2:(length(y)-2))])
         if (is.na(sigma2.start[1])) {
             sig2 <- rep(summary(ols)$sigma, ns)^2
         } else {
@@ -197,6 +195,11 @@ BridgeMixedPanel <- function(
         cat("Initializing betas by SLOG\n")
         beta_slog <- SLOG(x = X, y = Y, l = tau[1])
         beta <- matrix(beta_slog, nrow = ns, ncol = length(beta_slog))
+    }
+    if(sum(beta == 0)>1){
+        ## if beta has zero, add a tiny noise for the starting value of beta
+        ## otherwise, lambda computation will fail.
+        beta + rnorm(1, 0, 0.1)
     }
     
     ## ---------------------------------------------------- ##
@@ -374,7 +377,12 @@ BridgeMixedPanel <- function(
         ## ---------------------------------------------------- ##
         for (j in 1:ns) {
             for (k in 1:K) {
-                lambda[j, k] <- 2 * retstable(0.5 * alpha[j], 1.0, (beta[j, k]/ tau[j])^2, method = "LD")
+                h = (beta[j, k]/ tau[j])^2
+                if(h==0){
+                    cat("(beta[j, k]/ tau[j])^2 is zero in lambda computation\n")
+                }else{
+                    lambda[j, k] <- 2 * retstable(0.5 * alpha[j], 1.0, h, method = "LD")
+                }
             }
         }
 
@@ -395,13 +403,13 @@ BridgeMixedPanel <- function(
         }
         
         ## beta <- draw_beta_BCK_cpp(XVX, XVy, lambda, sig2, tau, ns, K)
-        if (beta.alg %in% c("BCK")) {
-            beta <- draw_beta_BCK_cpp(Xm, Ym, lambda, sig2, tau, ns, K)
-        } else if (beta.alg %in% c("CHL")) {
-            beta <- draw_beta_cpp(XVX, XVy, lambda, sig2, tau, ns, K)
-        } else{
-            stop("beta.alg is an unknown form.\n")
-        }
+        ## if (beta.alg %in% c("BCK")) {
+        ##     beta <- draw_beta_BCK_cpp(Xm, Ym, lambda, sig2, tau, ns, K)
+        ## } else if (beta.alg %in% c("CHL")) {
+        beta <- draw_beta_cpp(XVX, XVy, lambda, sig2, tau, ns, K)
+        ## } else{
+        ##     stop("beta.alg is an unknown form.\n")
+        ## }
         
         ## ---------------------------------------------------- ##
     ## Step 7: alpha (no change)
@@ -948,6 +956,7 @@ BridgeMixedPanel <- function(
             lambda[j, k] <- 2 * retstable(0.5 * alpha[j], 1.0, beta[j, k]^2 / tau.st[j]^2, method = "LD")
           }
         }
+          
         ## Reduced Step 4: beta
         beta <- draw_beta_BCK_cpp(XVX, XVy, lambda, sig2.st, tau.st, ns, K)
 

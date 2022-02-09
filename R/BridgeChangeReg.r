@@ -63,10 +63,10 @@
 #' If \code{TRUE}, alpha is updated by the Metropolis–Hastings algorithm.
 #' If \code{FALSE} the Griddy gibbs sampler is used instead.
 #' Default is \code{TRUE}.
-#' @param beta.alg
-#' An algorithm to sample beta.
-#' Default is \code{beta.alg = "BCK"}.
-#' Also supported is the traditional sampler based on the Cholesky decomposition: \code{beta.alg = "CHL"}.
+## #' @param beta.alg
+## #' An algorithm to sample beta.
+## #' Default is \code{beta.alg = "BCK"}.
+## #' Also supported is the traditional sampler based on the Cholesky decomposition: \code{beta.alg = "CHL"}.
 #' @param Waic
 #' If \code{TRUE}, WAIC is computed after the parameter estimation.
 #' Default is \code{FALSE}.
@@ -103,7 +103,7 @@ BridgeChangeReg <- function(formula, data = parent.frame(),                   # 
                             c0 = 0.1, d0 = 0.1, nu.shape = 2.0, nu.rate = 2.0,# priors / hyper params
                             known.alpha = FALSE, alpha.start = 1,             # alpha related args
                             alpha.limit = FALSE, alpha.MH = TRUE,
-                            beta.start = NULL, beta.alg = "BCK",              # beta realted args
+                            beta.start = NULL, ## beta.alg = "BCK",              # beta realted args
                             Waic = FALSE, marginal = FALSE                    # model selection args
                             ) {
     
@@ -292,13 +292,13 @@ BridgeChangeReg <- function(formula, data = parent.frame(),                   # 
     ## ---------------------------------------------------- ##
     ## Step 4: beta
     ## ---------------------------------------------------- ##
-      if (beta.alg %in% c("BCK")) {
-          beta <- draw_beta_BCK_cpp(Xm, Ym, lambda, sig2, tau, ns, K)
-      } else if (beta.alg %in% c("CHL")) {
-          beta <- draw_beta_cpp(XX, XY, lambda, sig2, tau, ns, K)
-      } else{
-          stop("beta.alg is an unknown form.\n")
-      }
+      ## if (beta.alg %in% c("BCK")) {
+      ##     beta <- draw_beta_BCK_cpp(Xm, Ym, lambda, sig2, tau, ns, K)
+      ## } else if (beta.alg %in% c("CHL")) {
+      beta <- draw_beta_cpp(XX, XY, lambda, sig2, tau, ns, K)
+      ## } else{
+      ##     stop("beta.alg is an unknown form.\n")
+      ## }
       
 
     ## ---------------------------------------------------- ##

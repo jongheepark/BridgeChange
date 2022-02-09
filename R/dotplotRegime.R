@@ -52,14 +52,21 @@
 #' inverse Gamma prior on variance parameters for V.
 #' If \code{v1 = NULL}, a value is computed from a test run of \code{NetworkStatic}.
 #'
+#' @param h hue value in the HCL color description, has to be in [0, 360]. Default is c(255, 330).
 #'
+#' @param l luminance value in the HCL color description. Default is c(40, 90).
+#'
+#' @param distance Distance of text labels from the maximum value of x. Default is 4. 
+#' 
 #' @export
 #'
 
 dotplotRegime <- function(out, hybrid=TRUE, start=1, cex=1, smooth.beta = TRUE, 
-                          x.location=c("random", "legend", "default"),
-                          order.state = 1, location.bar=9,
-                          text.cex=1, legend.position = "topright", pos=1, ## below default, 3 above
+                          x.location=c("none", "random", "legend", "default"),
+                          order.state = 1, location.bar=9, distance = 4, 
+                          h=c(255, 330), l = c(40, 90),
+                          text.cex=1, legend.position = "topright",
+                          pos=1, ## below default, 3 above
                           select=NULL, main="", raw=FALSE){
     if(attr(out, "m") == 0){
         state <- rep(1, length(attr(out, "y")))
@@ -116,7 +123,7 @@ dotplotRegime <- function(out, hybrid=TRUE, start=1, cex=1, smooth.beta = TRUE,
     if(nrow(coef.mat) == 1){
         col.scheme <- "brown"
     }else{
-        col.scheme <- diverge_hcl(nrow(coefs), h=c(255, 330), l = c(40, 90))
+        col.scheme <- diverge_hcl(nrow(coefs), h=h, l =l)
         col.scheme <- col.scheme[rank(coefs[, order.state])]
     }
     ## par (mar=c(3,3,2,4), mgp=c(2,.7,0), tck=-.01)
@@ -132,19 +139,22 @@ dotplotRegime <- function(out, hybrid=TRUE, start=1, cex=1, smooth.beta = TRUE,
     if(x.location=="random"){
         n.coef <- length(rownames(coefs))
         if(min(unique.time.index)+location.bar != (max(unique.time.index)-2)){
-            x.location.pos <- sample((min(unique.time.index)+location.bar):(max(unique.time.index)-2), n.coef, replace=TRUE)
+            x.location.pos <- sample((min(unique.time.index)+location.bar):(max(unique.time.index)-2),
+                                     n.coef, replace=TRUE)
         }else{
             x.location.pos <- min(unique.time.index)+location.bar
         }
-        text(x = x.location.pos, coef.mat[, length(unique.time.index)], rownames(coefs), cex=text.cex, col=col.scheme,
+        text(x = x.location.pos, coef.mat[, length(unique.time.index)], rownames(coefs),
+             cex=text.cex, col=col.scheme,
              pos=pos)
+    }else if(x.location=="default"){
+        text(x = max(unique.time.index)- distance, coef.mat[, length(unique.time.index)], pos=pos, 
+             rownames(coefs), col=col.scheme, cex=text.cex)
+
     }else if(x.location=="legend"){
         legend(legend.position, legend=rownames(coefs), col=addTrans(col.scheme, 100), pch=19, bty="n",
                cex=0.8,lty=1:1, lwd=1, y.intersp = 0.8)
     }else{
-        text(x = max(unique.time.index)-2, coef.mat[, length(unique.time.index)], pos=pos, 
-             rownames(coefs), col=col.scheme,
-             cex=text.cex)
     }
     ## title("Regime-changing coefficients", adj = 0, line = 0)
     box(); 
