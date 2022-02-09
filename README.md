@@ -39,27 +39,27 @@ The functions fits the linear model:
 ``` r
 set.seed(1973);
 
-##
-## simulate dataset 
-##
-
-out <- BridgeChangeSim(ntime=100, predictor = 50, rho=0.2, constant.p = 0.5,
-                       positive.jump=FALSE, varying.p = 0.2, break.point = 0.5, dgp.only=TRUE)
-
-# plot simulated coefficients 
-plot(1:length(out$true.beta[1,]), out$true.beta[1,], 
-     xlab="predictor", ylab="coefficients", ylim=range(out$true.beta), type='n')
-points(out$true.beta[1,], col="red", pch="1", cex=1)
-points(out$true.beta[2,], col="blue", pch="2", cex=1)
+library("pcse")
+set.seed(1999)
+data("agl")
+data = agl
+model = "within"
+index = c('country', 'year')
+effect = 'time'
+formula <- growth ~ lagg1 + opengdp + openex + openimp + leftc + central + inter
 ```
 
-<img src="man/figures/README-unnamed-chunk-2-1.png" width="100%" />
-
 ``` r
+pdata   <- pdata.frame(data, index)
+pm <- plm(formula, data = pdata, model = model, effect = effect)
 
-# plot simulated data 
-plot(lm(y ~ x, data = out)$resid, type = 'l', lwd = 1.3)
-abline(v = 100/2, col = 'red', lty = 3, lwd = 1.5)
+## plot of panel residuals 1
+coplot(pm$residuals ~ pdata[,index[2]]|pdata[,index[1]], data=pdata, 
+       overlap=.1, col="brown", type="l", panel = panel.smooth, xlab="panel residuals by group and time")
+
+## plot of panel residuals 2
+coplot(pm$residuals ~ pdata[,index[2]]|pdata[,index[1]], type="b", data=pdata)
+
 ```
 
 <img src="man/figures/README-unnamed-chunk-2-2.png" width="100%" />
