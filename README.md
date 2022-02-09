@@ -3,7 +3,7 @@
 BridgeChange
 ============
 
-`R` package `BridgeChange` constains functions useful to analyze time-series data and panel data with possibly large number of covariates and change-points. This package offers a Bayesian inference on the linear regression mode under high-dimensinal covariates whose effects on the outcome are allowed to be heterogeneous across time. This package will be useful to discover a set of predictive variables under dynamic setting where time-varying effect is expected to exist in many cases.
+`R` package `BridgeChange` fits hidden Markove Bayesian bridge models for time-series data and panel data with possibly a large number of covariates and change-points. This package can be used to detect, estimate, and summarize time-varying parameters of regression models where high-dimensinal covariates have heterogenous effects on the response data across time. The fixed-effects model, the random-effects model (random coefficient model or multilevel model), and the univariate regression model are available. Model diagnostics can be done by WAIC. Posterior estimates can be summarized by the decoupled shrinkage and selection (DSS) method. 
 
 Table of Contents
 -----------------
