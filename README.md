@@ -26,19 +26,60 @@ devtools::install_github("soichiroy/BridgeChange")
 
 ## Alvarez et al. data
 
-## Inspect data by looking at residuals
+The following two `model` arguments are availabel for the fixed-effects
+HMBB. - the fixed effects model (“within”), the default, - the pooling
+model (“pooling”),
+
+## Inspect data
 
 ``` r
 pdata   <- pdata.frame(data, index)
 pm <- plm(formula, data = pdata, model = model, effect = effect)
-                                        # 
-## plot panel residuals
+summary(pm)
+#> Oneway (time) effect Within Model
+#> 
+#> Call:
+#> plm(formula = formula, data = pdata, effect = effect, model = model)
+#> 
+#> Balanced Panel: n = 16, T = 15, N = 240
+#> 
+#> Residuals:
+#>      Min.   1st Qu.    Median   3rd Qu.      Max. 
+#> -5.837357 -1.197473  0.067401  1.170477  4.529090 
+#> 
+#> Coefficients:
+#>            Estimate  Std. Error t-value  Pr(>|t|)    
+#> lagg1    0.05031487  0.13920445  0.3614 0.7181162    
+#> opengdp -0.00233019  0.00186733 -1.2479 0.2134163    
+#> openex   0.00200753  0.00120757  1.6625 0.0978586 .  
+#> openimp -0.00060892  0.00167894 -0.3627 0.7171955    
+#> leftc   -0.02471232  0.00927577 -2.6642 0.0082944 ** 
+#> central -0.76356327  0.21625824 -3.5308 0.0005055 ***
+#> inter    0.01286831  0.00361409  3.5606 0.0004542 ***
+#> ---
+#> Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+#> 
+#> Total Sum of Squares:    809.01
+#> Residual Sum of Squares: 718.43
+#> R-Squared:      0.11196
+#> Adj. R-Squared: 0.026415
+#> F-statistic: 3.92636 on 7 and 218 DF, p-value: 0.00046809
+
+## response
+plot(pdata$growth)
+```
+
+<img src="man/figures/README-unnamed-chunk-3-1.png" width="100%" />
+
+``` r
+
+## panel residuals
 coplot(pm$residuals ~ pdata[,index[2]]|pdata[,index[1]], data=pdata, ## number=length(unique(pdata[,index[1]])),
        overlap=.1, col="brown", type="l", 
        panel = panel.smooth, xlab="panel residuals by group and time")
 ```
 
-<img src="man/figures/README-unnamed-chunk-3-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-3-2.png" width="100%" />
 
 ## Fitting HMBB
 
@@ -72,7 +113,7 @@ agl.cp0 <- BridgeFixedPanel(formula=formula, data = data,
 #>  
 #> ---------------------------------------------- 
 #>  Waic:  668.6554 
-#>  run time:  0.851 
+#>  run time:  0.848 
 #> ----------------------------------------------
 agl.cp1 <- BridgeFixedPanel(formula=formula, data = data, 
                             model = model, index = index, effect = effect,
@@ -105,7 +146,7 @@ agl.cp1 <- BridgeFixedPanel(formula=formula, data = data,
 #>  
 #> ---------------------------------------------- 
 #>  Waic:  644.8722 
-#>  run time:  1.747 
+#>  run time:  1.741 
 #> ----------------------------------------------
 agl.cp2 <- BridgeFixedPanel(formula=formula, data = data, 
                             model = model, index = index, effect = effect,
@@ -140,7 +181,7 @@ agl.cp2 <- BridgeFixedPanel(formula=formula, data = data,
 #>  
 #> ---------------------------------------------- 
 #>  Waic:  643.1039 
-#>  run time:  2.524 
+#>  run time:  2.566 
 #> ----------------------------------------------
 ```
 

@@ -46,12 +46,21 @@ effect = 'time'
 formula <- growth ~ lagg1 + opengdp + openex + openimp + leftc + central + inter
 ```
 
-## Inspect data by looking at residuals
+The following two `model` arguments are availabel for the fixed-effects HMBB.
+- the fixed effects model (`"within"`), the default,
+- the pooling model (`"pooling"`),
+
+
+## Inspect data 
 ```{r, message=FALSE,warning=FALSE}
 pdata   <- pdata.frame(data, index)
 pm <- plm(formula, data = pdata, model = model, effect = effect)
-                                        # 
-## plot panel residuals
+summary(pm)
+
+## response
+plot(pdata$growth)
+
+## panel residuals
 coplot(pm$residuals ~ pdata[,index[2]]|pdata[,index[1]], data=pdata, ## number=length(unique(pdata[,index[1]])),
        overlap=.1, col="brown", type="l", 
        panel = panel.smooth, xlab="panel residuals by group and time")
