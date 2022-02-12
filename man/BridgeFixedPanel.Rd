@@ -96,7 +96,6 @@ data("agl")
 data = agl
 model = "within"
 index = c('country', 'year')
-model = 'within'
 effect = 'time'
 formula <- growth ~ lagg1 + opengdp + openex + openimp + leftc + central + inter
 

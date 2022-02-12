@@ -10,6 +10,7 @@ dotplotRegime(
   start = 1,
   cex = 1,
   smooth.beta = TRUE,
+  SE = FALSE,
   x.location = c("none", "random", "legend", "default"),
   order.state = 1,
   location.bar = 9,
@@ -32,6 +33,8 @@ dotplotRegime(
 \item{start}{Starting value of the time sequence}
 
 \item{smooth.beta}{If TRUE, probabilistic estimates of hidden states (smooth) are used. Otherwise, discrete state values are used.}
+
+\item{SE}{If TRUE, draw 95 percent confidence interval.}
 
 \item{x.location}{x location of covariate name labels. If random, a random value (between min and max of x) is selected.
 If legend, it will be displayed in the top-right as a legend. If default, the labels will be shown in the above of the last regime estimates.}

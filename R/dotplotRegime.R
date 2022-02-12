@@ -21,7 +21,7 @@
 #' @param start Starting value of the time sequence
 #'
 #' @param smooth.beta If TRUE, probabilistic estimates of hidden states (smooth) are used. Otherwise, discrete state values are used. 
-#'
+#' @param SE If TRUE, draw 95 percent confidence interval.
 #' @param x.location x location of covariate name labels. If random, a random value (between min and max of x) is selected.
 #' If legend, it will be displayed in the top-right as a legend. If default, the labels will be shown in the above of the last regime estimates. 
 #'
@@ -61,7 +61,7 @@
 #' @export
 #'
 
-dotplotRegime <- function(out, hybrid=TRUE, start=1, cex=1, smooth.beta = TRUE, 
+dotplotRegime <- function(out, hybrid=TRUE, start=1, cex=1, smooth.beta = TRUE, SE = FALSE,
                           x.location=c("none", "random", "legend", "default"),
                           order.state = 1, location.bar=9, distance = 4, 
                           h=c(255, 330), l = c(40, 90),
@@ -88,6 +88,8 @@ dotplotRegime <- function(out, hybrid=TRUE, start=1, cex=1, smooth.beta = TRUE,
         ### coefs <- summary(out)[[1]][,1]
         beta.target <- out[, grepl("beta", colnames(out))]
         coef <- matrix(apply(beta.target, 2, mean), k, ns)
+        coef.high <- matrix(apply(beta.target, 2, quantile, prob=c(0.975)), k, ns)
+        coef.low <- matrix(apply(beta.target, 2, quantile, prob=c(0.025)), k, ns)
         rownames(coef) <- colnames(X)     
     }
     ## select
@@ -95,23 +97,43 @@ dotplotRegime <- function(out, hybrid=TRUE, start=1, cex=1, smooth.beta = TRUE,
         if(length(grep(select, rownames(coef))) == 1){
             coefs <-  matrix(coef[ grep(select, rownames(coef)), ], 1, m+1)
             rownames(coefs) <- rownames(coef)[grep(select, rownames(coef))]
+            if(!hybrid & SE){
+                coefs.high <- matrix(coef.high[ grep(select, rownames(coef)), ], 1, m+1)
+                coefs.low <- matrix(coef.low[ grep(select, rownames(coef)), ], 1, m+1)
+            }
         }else{
             coefs <- coef[grep(select, rownames(coef)),]
+            if(!hybrid & SE){
+                coefs.high <- matrix(coef.high[ grep(select, rownames(coef)), ], 1, m+1)
+                coefs.low <- matrix(coef.low[ grep(select, rownames(coef)), ], 1, m+1)
+            }
         }
     }else{
         coefs <- coef
+        if(!hybrid & SE){
+            coefs.high <- coef.high
+            coefs.low <- coef.low
+        }
     }
 
 
     ## if both regime estimates are zero, drop them.
-    if(sum(apply(coef, 1, prod) + apply(coef, 1, sum) == 0)>0){
-        coef <- coef[-which(apply(coef, 1, prod) + apply(coef, 1, sum) == 0),]
+    if(hybrid){
+        if(sum(apply(coef, 1, prod) + apply(coef, 1, sum) == 0)>0){
+            coef <- coef[-which(apply(coef, 1, prod) + apply(coef, 1, sum) == 0),]
+        }
     }
+
     coef.mat <- matrix(NA, nrow=nrow(coefs), ncol=length(unique.time.index))
     
     if(smooth.beta){
         prob.state <- cbind(sapply(1:ns, function(k){apply(attr(out, "s.store") == k, 2, mean)}))
         coef.mat <- coefs%*%t(prob.state)
+        if(!hybrid & SE){
+            coefs.mat.high <- coefs.high%*%t(prob.state)
+            coefs.mat.low <- coefs.low%*%t(prob.state)
+        }
+
     }else{
         for(i in 1:nrow(coefs)){
             coef.mat[i,] <- coefs[i, state]
@@ -133,6 +155,15 @@ dotplotRegime <- function(out, hybrid=TRUE, start=1, cex=1, smooth.beta = TRUE,
         for(i in 2:nrow(coefs)){
             points(unique.time.index, coef.mat[i,], pch=19, cex=cex, col=addTrans(col.scheme[i], 100))
             lines(unique.time.index, coef.mat[i,], lwd=0.8, col=col.scheme[i])
+            if(!hybrid & SE){
+                polygon(c(rev(unique.time.index), unique.time.index),
+                        c(rev(coefs.mat.high[i,]), coefs.mat.low[i,]), col = NetworkChange:::addTrans('grey80', 20), border = NA)           
+                ## intervals
+                ## lines(unique.time.index, coefs.mat.high[i,], lty = 'dashed', col = col.scheme[i])
+                ## lines(unique.time.index, coefs.mat.low[i,], lty = 'dashed', col = col.scheme[i])
+           
+            }
+
         }
     }
     ## grid(col="grey80")
@@ -148,7 +179,7 @@ dotplotRegime <- function(out, hybrid=TRUE, start=1, cex=1, smooth.beta = TRUE,
              cex=text.cex, col=col.scheme,
              pos=pos)
     }else if(x.location=="default"){
-        text(x = max(unique.time.index)- distance, coef.mat[, length(unique.time.index)], pos=pos, 
+        text(x = max(unique.time.index)- distance, coef.mat[, length(unique.time.index)- distance], pos=pos, 
              rownames(coefs), col=col.scheme, cex=text.cex)
 
     }else if(x.location=="legend"){
