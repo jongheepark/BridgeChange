@@ -19,9 +19,29 @@ using the [`devtools`](https://github.com/r-lib/devtools) package.
 ``` r
 # install BridgeChange from Github
 # you might need to instal "devtools"
-devtools::install_github("soichiroy/BridgeChange")
-#> Skipping install of 'BridgeChange' from a github remote, the SHA1 (8b759e0d) has not changed since last install.
-#>   Use `force = TRUE` to force installation
+devtools::install_github("jongheepark/BridgeChange")
+#> Downloading GitHub repo jongheepark/BridgeChange@HEAD
+#> collapse (1.7.5 -> 1.7.6) [CRAN]
+#> Installing 1 packages: collapse
+#> Installing package into '/Users/park/.R/packages'
+#> (as 'lib' is unspecified)
+#> 
+#>   There is a binary version available but the source version is later:
+#>          binary source needs_compilation
+#> collapse  1.7.5  1.7.6              TRUE
+#> installing the source package 'collapse'
+#> Warning in i.p(...): installation of package 'collapse' had non-zero exit status
+#>      checking for file ‘/private/var/folders/tf/xj58_m8146s8_tsg2989y7p80000gn/T/RtmpXSStBH/remotes543210316b5c/jongheepark-BridgeChange-fbc7a23/DESCRIPTION’ ...  ✓  checking for file ‘/private/var/folders/tf/xj58_m8146s8_tsg2989y7p80000gn/T/RtmpXSStBH/remotes543210316b5c/jongheepark-BridgeChange-fbc7a23/DESCRIPTION’
+#>   ─  preparing ‘BridgeChange’:
+#>      checking DESCRIPTION meta-information ...  ✓  checking DESCRIPTION meta-information
+#>   ─  cleaning src
+#>   ─  checking for LF line-endings in source and make files and shell scripts
+#>   ─  checking for empty or unneeded directories
+#>   ─  building ‘BridgeChange_1.4.tar.gz’
+#>      
+#> 
+#> Installing package into '/Users/park/.R/packages'
+#> (as 'lib' is unspecified)
 ```
 
 ## Alvarez et al. data
@@ -134,7 +154,7 @@ agl.cp0 <- BridgeFixedPanel(formula=formula, data = data,
 #>  
 #> ---------------------------------------------- 
 #>  Waic:  668.6554 
-#>  run time:  0.843 
+#>  run time:  0.826 
 #> ----------------------------------------------
 agl.cp1 <- BridgeFixedPanel(formula=formula, data = data, 
                             model = model, index = index, effect = effect,
@@ -167,7 +187,7 @@ agl.cp1 <- BridgeFixedPanel(formula=formula, data = data,
 #>  
 #> ---------------------------------------------- 
 #>  Waic:  644.8722 
-#>  run time:  1.635 
+#>  run time:  1.703 
 #> ----------------------------------------------
 agl.cp2 <- BridgeFixedPanel(formula=formula, data = data, 
                             model = model, index = index, effect = effect,
@@ -202,7 +222,7 @@ agl.cp2 <- BridgeFixedPanel(formula=formula, data = data,
 #>  
 #> ---------------------------------------------- 
 #>  Waic:  643.1039 
-#>  run time:  2.356 
+#>  run time:  2.42 
 #> ----------------------------------------------
 ```
 
