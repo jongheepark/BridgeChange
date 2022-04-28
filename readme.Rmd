@@ -26,7 +26,7 @@ You can install the most recent version of `BridgeChange` from Gitub using the [
 
 ```{r}
 # install BridgeChange from Github
-# you might need to instal "devtools"
+# you might need to install "devtools"
 devtools::install_github("jongheepark/BridgeChange")
 ```
 

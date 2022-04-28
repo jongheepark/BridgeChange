@@ -774,7 +774,7 @@ BridgeChangeReg <- function(formula, data = parent.frame(),                   # 
     output <- NA
 
     if (n.break == 0) {
-        if (isTRUE(scale.data)) betadraws <- betadraws * sd(y) / apply(X, 2, sd) ## report the coef in the original scale
+        if (isTRUE(standardize)) betadraws <- betadraws * sd(y) / apply(X, 2, sd) ## report the coef in the original scale
         output <- as.mcmc(cbind(betadraws, sigmadraws))
         colnames(output) <- c(xnames, "sigma2")
     } else {
