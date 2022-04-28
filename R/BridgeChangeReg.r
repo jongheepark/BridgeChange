@@ -18,7 +18,7 @@
 #' @param standardize
 #' If \code{TRUE}, \code{y} and \code{X} are both scaled to have zero mean and unit variance.
 #' Default is \code{TRUE}.
-#' We recommend \code{scale.data = TRUE} unless the original data are already scaled.
+#' We recommend \code{standardize = TRUE} unless the original data are already scaled.
 #' @param burnin The number of burn-in iterations for the sampler.
 #'
 #' @param mcmc The number of MCMC iterations after burn-in.
