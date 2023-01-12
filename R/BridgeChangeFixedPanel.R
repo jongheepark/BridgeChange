@@ -65,8 +65,9 @@ BridgeFixedPanel <- function(formula, data, index, model, effect,
                              nu.shape = 2.0, nu.rate = 2.0, alpha = 1,
                              Waic = FALSE, marginal = FALSE) {
     call <- match.call()
-    
-    
+
+    ## tibble or non data frame object causes an error 
+    data <- data.frame(data)
     ## @importMethodsFrom does not work 
     model.matrix <- getFromNamespace("model.matrix.pFormula", "plm")
     

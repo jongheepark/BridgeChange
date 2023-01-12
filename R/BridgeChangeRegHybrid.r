@@ -82,7 +82,7 @@
 #' @param marginal
 #' If \code{TRUE}, the marginal likelihood is computed based on Chib's method.
 #' Default is \code{FALSE}.
-#' @return
+#' @return output
 #'
 #' @name BridgeChangeRegHybrid
 #' @importFrom mvtnorm rmvnorm

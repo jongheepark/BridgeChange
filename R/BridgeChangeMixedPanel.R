@@ -391,7 +391,11 @@ BridgeMixedPanel <- function(
         ## ---------------------------------------------------- ##
 
         ## compute Xm and Ym for fixed and random
-        state.time.index <- rep(state, N)        
+
+        ## state.time.index <- rep(state, N) ## only works for balanced panel
+        
+        ## for unbalanced panel data
+        state.time.index <- state[time.id]
         for (j in 1:ns) {
             Xm[[j]] <- X[state.time.index == j,]            
             if (fixed) {

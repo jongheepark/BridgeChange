@@ -105,7 +105,7 @@ Default is \code{FALSE}.}
 Default is \code{FALSE}.}
 }
 \value{
-
+output
 }
 \description{
 Hybrid Univariate response linear change-point model with Bridge prior.

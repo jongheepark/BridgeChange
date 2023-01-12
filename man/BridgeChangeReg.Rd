@@ -40,7 +40,7 @@ Default is \code{n.break = 0}.}
 
 \item{standardize}{If \code{TRUE}, \code{y} and \code{X} are both scaled to have zero mean and unit variance.
 Default is \code{TRUE}.
-We recommend \code{scale.data = TRUE} unless the original data are already scaled.}
+We recommend \code{standardize = TRUE} unless the original data are already scaled.}
 
 \item{intercept}{A boolean. If \code{TRUE}, estimate intercept by MLE. The estimated intercept is used to detect breaks.
 This option does not affect the result when \code{n.break = 0}.
