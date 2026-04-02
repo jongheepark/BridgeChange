@@ -1,0 +1,168 @@
+
+## hybrid
+## location.bar is the x location of the legend starting
+## select = grep coefficients containing a string
+## hybrid=TRUE and raw=TRUE, use original y for variable selection
+## hybrid=TRUE and raw=FALSE, use yhat for variable selection
+## order = k : Order the transparency of coefficients based on regime k. The default is k=1.
+## smooth.beta If TRUE, beta*pr(state==j) is used to compute time beta for state j.
+##              Otherwise, beta*I(state==j) is used where I() is an indicator function. 
+## dotplotRegime <- function(out, hybrid=TRUE, start=1, cex=1, smooth.beta = TRUE, 
+##                           x.location=c("random", "legend", "default"),
+##                           order.state = 1, location.bar=9,
+##                           text.cex=1, legend.position = "topright", pos=1, ## below default, 3 above
+##                          select=NULL, main="", raw=FALSE){
+
+#' Draw a plot of covariate-specific time-varying movements
+#'
+#' @param out Output from a BridgeChange model.
+#' @param hybrid If TRUE, DSS results are used for graph. Otherwise, HMBB results are used.
+#' @param start Starting value of the time sequence.
+#' @param cex Point size. Default is 1.
+#' @param smooth.beta If TRUE, probabilistic estimates of hidden states (smooth) are used. Otherwise, discrete state values are used.
+#' @param SE If TRUE, draw 95 percent confidence interval.
+#' @param x.location Location of covariate name labels. One of \code{"none"}, \code{"random"}, \code{"legend"}, or \code{"default"}.
+#' @param order.state Regime index used to order transparency of coefficients. Default is 1.
+#' @param location.bar Bar location parameter. Default is 9.
+#' @param distance Distance of text labels from the maximum value of x. Default is 4.
+#' @param h Hue value in the HCL color description, in [0, 360]. Default is c(255, 330).
+#' @param l Luminance value in the HCL color description. Default is c(40, 90).
+#' @param text.cex Text size for labels. Default is 1.
+#' @param legend.position Position of legend. Default is \code{"topright"}.
+#' @param pos Text position relative to point (1=below, 3=above). Default is 1.
+#' @param select Character string to select specific coefficients by name. Default is NULL.
+#' @param main Plot title. Default is empty string.
+#' @param raw If TRUE, use raw y for variable selection. Default is FALSE.
+#'
+#' @export
+#'
+
+dotplotRegime <- function(out, hybrid=TRUE, start=1, cex=1, smooth.beta = TRUE, SE = FALSE,
+                          x.location=c("none", "random", "legend", "default"),
+                          order.state = 1, location.bar=9, distance = 4, 
+                          h=c(255, 330), l = c(40, 90),
+                          text.cex=1, legend.position = "topright",
+                          pos=1, ## below default, 3 above
+                          select=NULL, main="", raw=FALSE){
+    if(attr(out, "m") == 0){
+        state <- rep(1, length(attr(out, "y")))
+    }else{
+        state <- round(apply(attr(out, "s.store"), 2, mean))
+    }
+    unique.time.index <- start : (start + length(state) - 1)
+    m <- attr(out, "m")
+    ns <- m + 1
+    X <- attr(out, "X")
+    k <- dim(X)[2]
+    if(hybrid){
+        if(raw){
+            coef <- attr(out, "hybrid.raw")
+        }else{
+            coef <- attr(out, "hybrid")
+        }
+    }else{
+        ### coefs <- summary(out)[[1]][,1]
+        beta.target <- out[, grepl("beta", colnames(out))]
+        coef <- matrix(apply(beta.target, 2, mean), k, ns)
+        coef.high <- matrix(apply(beta.target, 2, quantile, prob=c(0.975)), k, ns)
+        coef.low <- matrix(apply(beta.target, 2, quantile, prob=c(0.025)), k, ns)
+        rownames(coef) <- colnames(X)     
+    }
+    ## select
+    if(!is.null(select)){
+        if(length(grep(select, rownames(coef))) == 1){
+            coefs <-  matrix(coef[ grep(select, rownames(coef)), ], 1, m+1)
+            rownames(coefs) <- rownames(coef)[grep(select, rownames(coef))]
+            if(!hybrid & SE){
+                coefs.high <- matrix(coef.high[ grep(select, rownames(coef)), ], 1, m+1)
+                coefs.low <- matrix(coef.low[ grep(select, rownames(coef)), ], 1, m+1)
+            }
+        }else{
+            coefs <- coef[grep(select, rownames(coef)),]
+            if(!hybrid & SE){
+                coefs.high <- matrix(coef.high[ grep(select, rownames(coef)), ], 1, m+1)
+                coefs.low <- matrix(coef.low[ grep(select, rownames(coef)), ], 1, m+1)
+            }
+        }
+    }else{
+        coefs <- coef
+        if(!hybrid & SE){
+            coefs.high <- coef.high
+            coefs.low <- coef.low
+        }
+    }
+
+
+    ## if both regime estimates are zero, drop them.
+    if(hybrid){
+        if(sum(apply(coef, 1, prod) + apply(coef, 1, sum) == 0)>0){
+            coef <- coef[-which(apply(coef, 1, prod) + apply(coef, 1, sum) == 0),]
+        }
+    }
+
+    coef.mat <- matrix(NA, nrow=nrow(coefs), ncol=length(unique.time.index))
+    
+    if(smooth.beta){
+        prob.state <- cbind(sapply(1:ns, function(k){apply(attr(out, "s.store") == k, 2, mean)}))
+        coef.mat <- coefs%*%t(prob.state)
+        if(!hybrid & SE){
+            coefs.mat.high <- coefs.high%*%t(prob.state)
+            coefs.mat.low <- coefs.low%*%t(prob.state)
+        }
+
+    }else{
+        for(i in 1:nrow(coefs)){
+            coef.mat[i,] <- coefs[i, state]
+        }
+    }
+
+    
+    ## require(colorspace)
+    if(nrow(coef.mat) == 1){
+        col.scheme <- "brown"
+    }else{
+        col.scheme <- diverge_hcl(nrow(coefs), h=h, l =l)
+        col.scheme <- col.scheme[rank(coefs[, order.state])]
+    }
+    ## par (mar=c(3,3,2,4), mgp=c(2,.7,0), tck=-.01)
+    plot(unique.time.index, coef.mat[1,], xlab="time", ylab="coefficients", bty='n', main=main,
+         ylim=range(coef.mat), type="o", pch=19, cex=cex, col=addTrans(col.scheme[1], 100))
+    if(nrow(coef.mat)>1){
+        for(i in 2:nrow(coefs)){
+            points(unique.time.index, coef.mat[i,], pch=19, cex=cex, col=addTrans(col.scheme[i], 100))
+            lines(unique.time.index, coef.mat[i,], lwd=0.8, col=col.scheme[i])
+            if(!hybrid & SE){
+                polygon(c(rev(unique.time.index), unique.time.index),
+                        c(rev(coefs.mat.high[i,]), coefs.mat.low[i,]), col = addTrans('grey80', 20), border = NA)           
+                ## intervals
+                ## lines(unique.time.index, coefs.mat.high[i,], lty = 'dashed', col = col.scheme[i])
+                ## lines(unique.time.index, coefs.mat.low[i,], lty = 'dashed', col = col.scheme[i])
+           
+            }
+
+        }
+    }
+    ## grid(col="grey80")
+    if(x.location=="random"){
+        n.coef <- length(rownames(coefs))
+        if(min(unique.time.index)+location.bar != (max(unique.time.index)-2)){
+            x.location.pos <- sample((min(unique.time.index)+location.bar):(max(unique.time.index)-2),
+                                     n.coef, replace=TRUE)
+        }else{
+            x.location.pos <- min(unique.time.index)+location.bar
+        }
+        text(x = x.location.pos, coef.mat[, length(unique.time.index)], rownames(coefs),
+             cex=text.cex, col=col.scheme,
+             pos=pos)
+    }else if(x.location=="default"){
+        text(x = max(unique.time.index)- distance, coef.mat[, length(unique.time.index)- distance], pos=pos, 
+             rownames(coefs), col=col.scheme, cex=text.cex)
+
+    }else if(x.location=="legend"){
+        legend(legend.position, legend=rownames(coefs), col=addTrans(col.scheme, 100), pch=19, bty="n",
+               cex=0.8,lty=1:1, lwd=1, y.intersp = 0.8)
+    }else{
+    }
+    ## title("Regime-changing coefficients", adj = 0, line = 0)
+    box(); 
+}

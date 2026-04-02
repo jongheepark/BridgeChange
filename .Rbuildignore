@@ -1,0 +1,8 @@
+^README\.Rmd$
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.DS_Store$
+^examples$
+^readme\.Rmd$
+^\.claude$
+^LICENSE$

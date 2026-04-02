@@ -1,0 +1,33 @@
+Package: BridgeChange
+Type: Package
+Title: Bayesian Change-Point Models with Bridge Prior for Time-Series and Panel Data
+Version: 1.6
+Date: 2026-04-01
+Authors@R: c(
+  person("Jong Hee", "Park", email = "jongheepark@snu.ac.kr", role = c("aut")),
+  person("Soichiro", "Yamauchi", email = "syamauchi@g.harvard.edu", role = c("aut", "cre"))
+  )
+Description: Bayesian implementation of Bridge regression with change-points
+    for uncovering time-varying interaction effects in regression models.
+    It implements change-point analysis using Bayesian Bridge prior where
+    regression parameters (including all possible pairwise interactions)
+    are allowed to change multiple times.
+License: GPL (>= 2)
+Encoding: UTF-8
+Depends:
+    R (>= 3.5.0)
+Imports:
+    coda (>= 0.11-3),
+    colorspace,
+    copula,
+    ggplot2,
+    glmnet,
+    MCMCpack,
+    mvtnorm,
+    plm,
+    Rcpp (>= 0.12.11),
+    truncnorm
+LinkingTo: Rcpp, RcppArmadillo
+RoxygenNote: 7.3.2
+Suggests:
+    MASS
